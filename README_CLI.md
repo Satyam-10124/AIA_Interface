@@ -31,6 +31,7 @@ python3 ui_generator_cli.py --agent-description "A travel planning assistant tha
 | `--agent-description` | `-d` | Description of the AI agent's purpose and functionality | Yes |
 | `--agent-capabilities` | `-c` | Comma-separated list of the agent's key capabilities | Yes |
 | `--agent-api` | `-a` | APIs the agent will use | No |
+| `--custom-design` | `-cd` | Custom design preferences in natural language | No |
 | `--theme` | `-t` | UI theme preference (light, dark, system) | No |
 | `--layout` | `-l` | UI layout preference (standard, compact, expanded) | No |
 | `--color-scheme` | `-cs` | UI color scheme (blue, green, purple, red, orange, teal) | No |
@@ -53,6 +54,11 @@ python3 ui_generator_cli.py --agent-description "A travel planning assistant tha
 3. **With API Integration and Custom Output Directory**:
    ```bash
    python3 ui_generator_cli.py -d "A news aggregator assistant" -c "Fetch news, summarize articles, filter by topic" -a "NewsAPI, OpenAI API" -o "./news_ui"
+   ```
+
+4. **With Custom Design Preferences**:
+   ```bash
+   python3 ui_generator_cli.py -d "A financial advisor agent" -c "Investment advice, portfolio management, retirement planning" -cd "I prefer dark minimalist designs with subtle animations and clean typography" -o "./finance_ui"
    ```
 
 ## Output

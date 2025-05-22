@@ -50,7 +50,17 @@ def parse_arguments():
         help="APIs the agent will use (optional)"
     )
     
-    parser.add_argument(
+    # User design preference group
+    design_group = parser.add_argument_group('Design Preferences')
+    
+    design_group.add_argument(
+        "--custom-design", "-cd",
+        type=str,
+        default="",
+        help="Custom design preferences in natural language (e.g., 'I prefer dark minimalist designs with subtle animations')"
+    )
+    
+    design_group.add_argument(
         "--theme", "-t",
         type=str,
         choices=["light", "dark", "system"],
@@ -108,7 +118,8 @@ def generate_ui(args):
             "theme": args.theme,
             "layout": args.layout,
             "color_scheme": args.color_scheme,
-            "font_size": args.font_size
+            "font_size": args.font_size,
+            "custom_design": args.custom_design
         }
     }
     
@@ -122,6 +133,10 @@ def generate_ui(args):
             logger.info(message)
     
     log(f"Processing UI generation request for agent: {config['agent_description'][:100]}...")
+    
+    # Log custom design preferences if provided
+    if config['user_preferences']['custom_design']:
+        log(f"Custom design preferences: {config['user_preferences']['custom_design']}")
     
     # Kickoff AI crew for UI generation
     log("Starting crewAI agents to analyze agent requirements and generate UI/UX...")

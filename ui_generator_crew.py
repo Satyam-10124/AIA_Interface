@@ -31,11 +31,13 @@ class UICodeOutput(BaseModel):
 load_dotenv()
 
 # Initialize LLM
-llm = LLM(
-    model="gemini/gemini-2.0-flash",  # Using gemini-pro, adjust if needed
-    api_key=os.getenv("GEMINI_API_KEY"),
-    # You can add other llm configurations here, e.g., temperature
-)
+# llm = LLM(
+#     model="gemini/gemini-2.0-flash",  # Using gemini-pro, adjust if needed
+#     api_key=os.getenv("GEMINI_API_KEY"),
+#     # You can add other llm configurations here, e.g., temperature
+# )
+llm = LLM(model=f'azure/{os.environ.get("AZURE_LLM_MODEL_NAME")}', temperature=0.7)
+
 
 # Initialize Tools
 code_interpreter = CodeInterpreterTool(llm=llm)
@@ -108,9 +110,12 @@ task_design_ui_components = Task(
     description=(
         "1. Review the agent analysis from the previous task\n"
         "2. Consider any user preferences provided: '{user_preferences}'\n"
-        "3. Design the UI components, layout structure, interaction model, and design tokens\n"
-        "4. Ensure the design aligns with the agent's purpose and capabilities\n"
-        "5. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
+        "3. IMPORTANT: If a custom_design preference is provided, prioritize these design instructions\n"
+        "   over the standard theme/layout/color_scheme options. The custom_design contains\n"
+        "   natural language preferences like 'I prefer dark minimalist designs with subtle animations'\n"
+        "4. Design the UI components, layout structure, interaction model, and design tokens\n"
+        "5. Ensure the design aligns with the agent's purpose, capabilities, and user's design preferences\n"
+        "6. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
         "   {\n"
         "     \"components\": [\"component1\", \"component2\", ...],\n"
         "     \"layout_structure\": \"description of layout\",\n"
@@ -149,7 +154,9 @@ task_generate_css = Task(
         "2. Create the CSS styles for the AI agent interface\n"
         "3. Implement the design tokens (colors, typography, spacing) from the UI design\n"
         "4. Ensure the styles are responsive and accessible\n"
-        "5. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
+        "5. If custom design preferences were specified, make sure your CSS implementation\n"
+        "   faithfully reflects these preferences (e.g., 'minimalist', 'colorful', etc.)\n"
+        "6. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
         "   {\n"
         "     \"filename\": \"styles.css\",\n"
         "     \"code\": \"/* Full CSS code here */\",\n"
