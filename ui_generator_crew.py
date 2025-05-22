@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Annotated
 
 
+
 # Define Pydantic Models for structured output
 class AgentConfigOutput(BaseModel):
     agent_type: str = Field(..., description="The identified type of agent (e.g., travel, customer service, education)")
