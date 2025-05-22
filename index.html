@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Travel Agent - Discover Your Next Adventure</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Animated background particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 15s infinite linear;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        
+        /* Header with glassmorphism */
+        header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcf7f, #4d9de0);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+        
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        /* Navigation */
+        nav {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .menu-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(238, 90, 36, 0.3);
+        }
+        
+        .menu-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(238, 90, 36, 0.4);
+        }
+        
+        /* Main content */
+        main {
+            padding: 40px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Search section */
+        #search-bar {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .search-container {
+            position: relative;
+            display: inline-block;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 20px 60px 20px 25px;
+            border: none;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 18px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.02);
+        }
+        
+        .search-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        /* Destination cards */
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 40px;
+            background: linear-gradient(45deg, #fff, #f8f9fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .destination-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 80px;
+        }
+        
+        .destination-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .destination-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .destination-card:hover::before {
+            left: 100%;
+        }
+        
+        .destination-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+        
+        .card-description {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .card-price {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #ffd93d;
+        }
+        
+        /* Hotel carousel */
+        .hotel-section {
+            margin: 80px 0;
+        }
+        
+        .hotel-carousel {
+            display: flex;
+            overflow-x: auto;
+            gap: 25px;
+            padding: 20px 0;
+            scroll-behavior: smooth;
+        }
+        
+        .hotel-carousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .hotel-carousel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        
+        .hotel-carousel::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 10px;
+        }
+        
+        .hotel-item {
+            min-width: 300px;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(78, 205, 196, 0.2));
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .hotel-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Map section */
+        #map-view {
+            margin: 80px 0;
+            text-align: center;
+        }
+        
+        .map-container {
+            position: relative;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .map-container:hover {
+            transform: scale(1.02);
+        }
+        
+        .map-placeholder {
+            width: 100%;
+            height: 450px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        /* Chatbot section */
+        #chatbot-assistant {
+            background: linear-gradient(135deg, rgba(76, 201, 240, 0.2), rgba(147, 107, 232, 0.2));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 40px;
+            margin: 80px 0;
+            text-align: center;
+        }
+        
+        .chat-message {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 600px;
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Buttons */
+        .cta-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            padding: 15px 35px;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(238, 90, 36, 0.3);
+            margin: 10px;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(238, 90, 36, 0.4);
+        }
+        
+        .secondary-button {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border: none;
+            padding: 15px 35px;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.3);
+            margin: 10px;
+        }
+        
+        .secondary-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(79, 172, 254, 0.4);
+        }
+        
+        /* Footer */
+        footer {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px 20px;
+            text-align: center;
+            margin-top: 100px;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .section-title { font-size: 2rem; }
+            .destination-grid { grid-template-columns: 1fr; }
+            main { padding: 20px 15px; }
+        }
+        
+        /* Loading animation */
+        .loading-dots {
+            display: inline-block;
+        }
+        
+        .loading-dots::after {
+            content: '';
+            animation: dots 2s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background particles -->
+    <div class="bg-particles" id="particles"></div>
+    
+    <header>
+        <h1>✈️ AI Travel Agent</h1>
+        <p style="margin-top: 10px; font-size: 1.1rem; opacity: 0.9;">Discover Your Next Adventure with AI Magic</p>
+    </header>
+
+    <nav>
+        <button class="menu-btn" onclick="toggleMenu()">🌟 Explore Menu</button>
+    </nav>
+
+    <main>
+        <section id="search-bar">
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="🔍 Where would you like to go? (e.g., Tokyo, Paris, Bali...)">
+                <button class="search-btn" onclick="searchDestinations()">Search</button>
+            </div>
+        </section>
+
+        <section id="destination-cards">
+            <h2 class="section-title">🌍 Popular Destinations</h2>
+            <div class="destination-grid">
+                <div class="destination-card" onclick="selectDestination('tokyo')">
+                    <div class="card-content">
+                        <h3 class="card-title">🗾 Tokyo, Japan</h3>
+                        <p class="card-description">Experience the perfect blend of ancient traditions and futuristic innovation in this vibrant metropolis.</p>
+                        <div class="card-price">From $1,299</div>
+                    </div>
+                </div>
+                
+                <div class="destination-card" onclick="selectDestination('paris')">
+                    <div class="card-content">
+                        <h3 class="card-title">🗼 Paris, France</h3>
+                        <p class="card-description">The City of Light awaits with its romantic charm, world-class cuisine, and iconic landmarks.</p>
+                        <div class="card-price">From $899</div>
+                    </div>
+                </div>
+                
+                <div class="destination-card" onclick="selectDestination('bali')">
+                    <div class="card-content">
+                        <h3 class="card-title">🏝️ Bali, Indonesia</h3>
+                        <p class="card-description">Discover tropical paradise with stunning beaches, ancient temples, and spiritual tranquility.</p>
+                        <div class="card-price">From $699</div>
+                    </div>
+                </div>
+                
+                <div class="destination-card" onclick="selectDestination('nyc')">
+                    <div class="card-content">
+                        <h3 class="card-title">🏙️ New York City</h3>
+                        <p class="card-description">The city that never sleeps offers endless entertainment, culture, and urban adventures.</p>
+                        <div class="card-price">From $799</div>
+                    </div>
+                </div>
+                
+                <div class="destination-card" onclick="selectDestination('santorini')">
+                    <div class="card-content">
+                        <h3 class="card-title">🏛️ Santorini, Greece</h3>
+                        <p class="card-description">Whitewashed villages perched on dramatic cliffs overlooking the stunning Aegean Sea.</p>
+                        <div class="card-price">From $1,099</div>
+                    </div>
+                </div>
+                
+                <div class="destination-card" onclick="selectDestination('dubai')">
+                    <div class="card-content">
+                        <h3 class="card-title">🏜️ Dubai, UAE</h3>
+                        <p class="card-description">A modern oasis where luxury meets adventure in the heart of the Arabian Desert.</p>
+                        <div class="card-price">From $1,499</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="itinerary-builder">
+            <h2 class="section-title">📅 AI Itinerary Builder</h2>
+            <div style="text-align: center; margin-bottom: 40px;">
+                <button class="cta-button" onclick="buildItinerary()">🤖 Generate Smart Itinerary</button>
+                <button class="secondary-button" onclick="customizeTrip()">✨ Customize Your Trip</button>
+            </div>
+        </section>
+
+        <section id="hotel-recommendations" class="hotel-section">
+            <h2 class="section-title">🏨 Luxury Hotel Recommendations</h2>
+            <div class="hotel-carousel">
+                <div class="hotel-item" onclick="selectHotel('ritz')">
+                    <h3>🌟 The Ritz-Carlton</h3>
+                    <p>Luxury redefined with impeccable service and stunning city views.</p>
+                    <div style="color: #ffd93d; font-weight: 600; margin-top: 15px;">$450/night</div>
+                </div>
+                
+                <div class="hotel-item" onclick="selectHotel('mandarin')">
+                    <h3>🏮 Mandarin Oriental</h3>
+                    <p>Asian-inspired elegance meets modern comfort in the heart of the city.</p>
+                    <div style="color: #ffd93d; font-weight: 600; margin-top: 15px;">$380/night</div>
+                </div>
+                
+                <div class="hotel-item" onclick="selectHotel('fourseasons')">
+                    <h3>🌸 Four Seasons Resort</h3>
+                    <p>Tropical paradise with world-class amenities and breathtaking ocean views.</p>
+                    <div style="color: #ffd93d; font-weight: 600; margin-top: 15px;">$520/night</div>
+                </div>
+                
+                <div class="hotel-item" onclick="selectHotel('boutique')">
+                    <h3>🎨 Boutique Collection</h3>
+                    <p>Unique designer hotels with local character and personalized experiences.</p>
+                    <div style="color: #ffd93d; font-weight: 600; margin-top: 15px;">$280/night</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="map-view">
+            <h2 class="section-title">🗺️ Interactive Map View</h2>
+            <div class="map-container">
+                <div class="map-placeholder">
+                    🌐 Interactive Map Loading<span class="loading-dots"></span>
+                    <br><br>
+                    <small>Click to explore destinations worldwide</small>
+                </div>
+            </div>
+        </section>
+
+        <section id="filter-options" style="text-align: center; margin: 60px 0;">
+            <h2 class="section-title">🎛️ Filter Your Perfect Trip</h2>
+            <button class="secondary-button" onclick="openFilters()">🔧 Advanced Filters</button>
+            <button class="cta-button" onclick="surpriseMe()">🎲 Surprise Me!</button>
+        </section>
+
+        <section id="chatbot-assistant">
+            <h2 class="section-title">🤖 Your AI Travel Assistant</h2>
+            <div class="chat-message">
+                <p>👋 Hello! I'm your personal AI travel assistant. I can help you:</p>
+                <ul style="text-align: left; margin: 20px 0; list-style: none;">
+                    <li>✈️ Find the perfect destination for your interests</li>
+                    <li>🏨 Recommend hotels based on your budget and preferences</li>
+                    <li>📅 Create personalized itineraries</li>
+                    <li>💰 Find the best deals and booking options</li>
+                    <li>🌟 Provide local tips and hidden gems</li>
+                </ul>
+                <p><strong>How can I help you plan your dream trip today?</strong></p>
+            </div>
+            <div style="margin-top: 30px;">
+                <button class="cta-button" onclick="startChat()">💬 Start Chatting</button>
+                <button class="secondary-button" onclick="getRecommendations()">🎯 Get Recommendations</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 AI Travel Agent - Powered by Advanced AI Technology</p>
+        <p style="margin-top: 10px; opacity: 0.7;">Making dream trips a reality, one destination at a time ✨</p>
+    </footer>
+
+    <script>
+        // Create animated background particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.width = Math.random() * 6 + 3 + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+        
+        // Interactive functions
+        function toggleMenu() {
+            alert('🌟 Menu opened! Navigation options would appear here in a real application.');
+        }
+        
+        function searchDestinations() {
+            const input = document.querySelector('.search-input');
+            if (input.value.trim()) {
+                alert(`🔍 Searching for destinations like "${input.value}"... Found amazing results!`);
+            } else {
+                alert('✈️ Please enter a destination to search for your next adventure!');
+            }
+        }
+        
+        function selectDestination(dest) {
+            const destinations = {
+                'tokyo': '🗾 Tokyo selected! Preparing your Japanese adventure...',
+                'paris': '🗼 Paris selected! Bon voyage to the City of Light!',
+                'bali': '🏝️ Bali selected! Your tropical paradise awaits!',
+                'nyc': '🏙️ NYC selected! Get ready for the Big Apple experience!',
+                'santorini': '🏛️ Santorini selected! Greek island magic coming up!',
+                'dubai': '🏜️ Dubai selected! Luxury desert adventure begins!'
+            };
+            alert(destinations[dest] || '🌍 Destination selected! Planning your perfect trip...');
+        }
+        
+        function buildItinerary() {
+            alert('🤖 AI Itinerary Builder activated! Creating your personalized travel plan...');
+        }
+        
+        function customizeTrip() {
+            alert('✨ Trip customization panel opened! Tailor your perfect adventure...');
+        }
+        
+        function selectHotel(hotel) {
+            const hotels = {
+                'ritz': '🌟 The Ritz-Carlton selected! Luxury awaits you!',
+                'mandarin': '🏮 Mandarin Oriental selected! Asian elegance at its finest!',
+                'fourseasons': '🌸 Four Seasons selected! Paradise found!',
+                'boutique': '🎨 Boutique hotel selected! Unique experiences ahead!'
+            };
+            alert(hotels[hotel] || '🏨 Hotel selected! Your accommodation is booked!');
+        }
+        
+        function openFilters() {
+            alert('🎛️ Advanced filters panel opened! Customize your search preferences...');
+        }
+        
+        function surpriseMe() {
+            const surprises = [
+                '🎲 Surprise! How about a spontaneous trip to Iceland to see the Northern Lights?',
+                '🎲 Surprise! Madagascar adventure awaits - unique wildlife and pristine beaches!',
+                '🎲 Surprise! Bhutan calling - the last Shangri-La on Earth!',
+                '🎲 Surprise! Faroe Islands adventure - dramatic landscapes and Nordic charm!'
+            ];
+            alert(surprises[Math.floor(Math.random() * surprises.length)]);
+        }
+        
+        function startChat() {
+            alert('💬 AI Chat activated! I\'m here to help plan your perfect trip. What\'s your dream destination?');
+        }
+        
+        function getRecommendations() {
+            alert('🎯 Analyzing your preferences... Generating personalized recommendations!');
+        }
+        
+        // Initialize particles when page loads
+        document.addEventListener('DOMContentLoaded', createParticles);
+        
+        // Add smooth scrolling for better UX
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+            });
+        });
+    </script>
+</body>
+</html>
