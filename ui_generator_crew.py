@@ -31,12 +31,12 @@ class UICodeOutput(BaseModel):
 load_dotenv()
 
 # Initialize LLM
-# llm = LLM(
-#     model="gemini/gemini-2.0-flash",  # Using gemini-pro, adjust if needed
-#     api_key=os.getenv("GEMINI_API_KEY"),
-#     # You can add other llm configurations here, e.g., temperature
-# )
-llm = LLM(model=f'azure/{os.environ.get("AZURE_LLM_MODEL_NAME")}', temperature=0.7)
+llm = LLM(
+    model="gemini/gemini-2.5-pro-preview-03-25",  # Using gemini-pro, adjust if needed
+    api_key=os.getenv("GEMINI_API_KEY"),
+    # You can add other llm configurations here, e.g., temperature
+)
+# llm = LLM(model=f'azure/{os.environ.get("AZURE_LLM_MODEL_NAME")}', temperature=0.7)
 
 
 # Initialize Tools
