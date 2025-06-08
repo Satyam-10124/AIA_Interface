@@ -68,7 +68,7 @@ ui_designer = Agent(
     ),
     verbose=True,
     allow_delegation=False,
-    tools=[serper_tool],
+    tools=[serper_tool,file_writer_tool],
     llm=llm
 )
 
