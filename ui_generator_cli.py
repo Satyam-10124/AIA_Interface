@@ -229,11 +229,25 @@ def generate_ui(args):
             if hasattr(task_instance, '_result') and task_instance._result:
                 raw_result = str(task_instance._result)
                 
-                # Look for code blocks in markdown format
-                code_blocks = re.findall(r'```(?:html|css|javascript|js)?\n([\s\S]*?)```', raw_result, re.DOTALL)
+                # Look for code blocks in markdown format (capture language)
+                blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', raw_result, re.DOTALL)
                 
-                if code_blocks:
-                    for j, code_block in enumerate(code_blocks):
+                if blocks:
+                    for j, (lang, code_block) in enumerate(blocks):
+                        lang = (lang or '').lower()
+                        # Handle JSON blocks that contain {"filename": ..., "code": ...}
+                        if lang == 'json':
+                            try:
+                                parsed = json.loads(code_block)
+                                if isinstance(parsed, dict) and 'filename' in parsed and 'code' in parsed:
+                                    filename = parsed['filename']
+                                    ui_code_dict[filename] = parsed['code']
+                                    log(f"Extracted JSON block with filename: {filename}")
+                                    continue
+                            except Exception:
+                                # Not a clean JSON payload, fall back to type inference
+                                pass
+                        
                         # Try to determine file type based on content
                         if "<html" in code_block or "<!DOCTYPE" in code_block:
                             filename = "index.html"

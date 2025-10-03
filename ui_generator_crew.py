@@ -32,7 +32,7 @@ load_dotenv()
 
 # Initialize LLM
 llm = LLM(
-    model="gemini/gemini-2.5-pro-preview-03-25",  # Using gemini-pro, adjust if needed
+    model="gemini/gemini-2.5-pro",  # Using gemini-pro, adjust if needed
     api_key=os.getenv("GEMINI_API_KEY"),
     # You can add other llm configurations here, e.g., temperature
 )
@@ -134,7 +134,7 @@ task_generate_html = Task(
         "1. Review the agent analysis and UI design from previous tasks\n"
         "2. Create the HTML structure for the AI agent interface\n"
         "3. Ensure the HTML is semantic, accessible, and follows best practices\n"
-        "4. Include appropriate containers for all the required components\n"
+        "4. Include appropriate containers for all the required components run the code and fix the errors if any\n"
         "5. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
         "   {\n"
         "     \"filename\": \"index.html\",\n"

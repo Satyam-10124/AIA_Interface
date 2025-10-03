@@ -2,6 +2,7 @@
 venv/
 env/
 ENV/
+.venv/
 .env
 
 # Python bytecode
@@ -13,34 +14,55 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+.eggs/
+pip-wheel-metadata/
 
 # Generated files
 static/generated/
+generated_ui/
+generated_agents/
 
 # IDE specific files
 .idea/
-.vscode/
+vscode/
 *.swp
 *.swo
-
-# OS specific files
-.DS_Store
-Thumbs.db
 
 # Logs
 *.log
 logs/
+
+# Test and coverage artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+.tox/
+
+# Linters and type-checkers
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+
+# Python caches and metadata
+.cache/
+.python-version
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node/JS (if used by frontends)
+node_modules/
+next/
+.nuxt/
+out/
 
 # Local development settings
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-
-# API keys and secrets
-.env
-.flaskenv
-*.pem
 *.key
 
 # Database files
