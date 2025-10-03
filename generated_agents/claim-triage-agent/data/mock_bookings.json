@@ -1,0 +1,9 @@
+[
+  {
+    "name": "John Doe",
+    "contact": "john.doe@example.com",
+    "party_size": 2,
+    "date": "2024-09-15",
+    "time": "19:00"
+  }
+]

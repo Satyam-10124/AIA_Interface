@@ -20,13 +20,17 @@ pip-wheel-metadata/
 # Generated files
 static/generated/
 generated_ui/
-generated_agents/
+
 
 # IDE specific files
 .idea/
-vscode/
+.vscode/
 *.swp
 *.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
 
 # Logs
 *.log
@@ -37,6 +41,8 @@ logs/
 htmlcov/
 .coverage
 coverage.xml
+.coverage.*
+coverage/
 .tox/
 
 # Linters and type-checkers
@@ -54,15 +60,22 @@ coverage.xml
 
 # Node/JS (if used by frontends)
 node_modules/
-next/
+.next/
 .nuxt/
 out/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Local development settings
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# API keys and secrets
+.flaskenv
+*.pem
 *.key
 
 # Database files
