@@ -1,0 +1,23 @@
+{
+  "claim_id": "CL-54321",
+  "claimant_info": {
+    "name": "Jane Doe",
+    "contact": "jane.doe@email.com",
+    "address": "456 Oak Ave, Anytown, USA"
+  },
+  "policy_details": {
+    "policy_number": "POL-987654321",
+    "coverage_type": "Comprehensive Auto",
+    "start_date": "2023-01-15",
+    "end_date": "2024-01-15"
+  },
+  "incident_details": {
+    "date": "2024-05-10",
+    "time": "14:30",
+    "location": "Intersection of Main St and 1st St, Anytown",
+    "description": "While stopped at a red light, my car was suddenly hit from behind by another vehicle that failed to stop. There was a sudden hailstorm at the time, making visibility poor. I sustained whiplash and there is significant damage to my rear bumper.",
+    "reported_to_police": true
+  },
+  "claimed_amount": 5500.75,
+  "witnesses": []
+}

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import Dict, List, Any
+from crewai.tools import tool
 
 # --- Mock Database Interaction ---
 def get_mock_db_path() -> Path:
@@ -84,10 +85,31 @@ class EmailTools:
         draft_content += f"Subject: {subject}\n"
         draft_content += "---\n"
         draft_content += body
-
         try:
             with open(output_filename, "w") as f:
                 f.write(draft_content)
             return f"Successfully drafted email for {recipient_name} and saved to '{output_filename}'."
         except IOError as e:
             return f"Error: Failed to write email draft to file. {e}"
+
+
+# ----------------------------
+# CrewAI tool wrappers
+# ----------------------------
+
+@tool("check_availability", return_direct=True)
+def check_availability_tool(date: str, time: str) -> str:
+    """Check if a table is available for a given date and time and suggest alternatives if unavailable."""
+    return BookingTools.check_availability(date, time)
+
+
+@tool("create_booking", return_direct=True)
+def create_booking_tool(date: str, time: str, party_size: int, customer_name: str, customer_contact: str) -> str:
+    """Create a new booking for the provided details and persist it to the mock database."""
+    return BookingTools.create_booking(date, time, party_size, customer_name, customer_contact)
+
+
+@tool("draft_response_email", return_direct=True)
+def draft_response_email_tool(recipient_name: str, subject: str, body: str, output_filename: str = "drafted_email.out") -> str:
+    """Draft and save a customer email response to a local file."""
+    return EmailTools.draft_response_email(recipient_name, subject, body, output_filename)

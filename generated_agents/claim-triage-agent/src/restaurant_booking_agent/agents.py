@@ -1,7 +1,11 @@
-from crewai import Agent
+from crewai import Agent, LLM
 from crewai_tools import FileReadTool, SerperDevTool
 
-from .tools.booking_tools import BookingTools, EmailTools
+from .tools.booking_tools import (
+    check_availability_tool,
+    create_booking_tool,
+    draft_response_email_tool,
+)
 
 # Initialize tools
 file_read_tool = FileReadTool()
@@ -23,6 +27,7 @@ class RestaurantBookingAgents:
                       "Your primary function is to read customer emails and organize their "
                       "requests into a structured format for the booking system.",
             tools=[file_read_tool, serper_tool],
+            llm=LLM(model="gemini/gemini-2.5-pro"),
             verbose=True,
             allow_delegation=False,
         )
@@ -40,7 +45,8 @@ class RestaurantBookingAgents:
                       "With direct access to the booking system, you efficiently verify "
                       "table availability, secure slots for customers, and find viable "
                       "alternatives when the requested time is unavailable. You are precise and fast.",
-            tools=[BookingTools.check_availability, BookingTools.create_booking],
+            tools=[check_availability_tool, create_booking_tool],
+            llm=LLM(model="gemini/gemini-2.5-pro"),
             verbose=True,
             allow_delegation=False,
         )
@@ -58,7 +64,8 @@ class RestaurantBookingAgents:
                       "courteous, clear, and helpful. You craft perfect email responses "
                       "that make customers feel valued, whether you're confirming their "
                       "booking or helping them find a different time to dine.",
-            tools=[EmailTools.draft_response_email],
+            tools=[draft_response_email_tool],
+            llm=LLM(model="gemini/gemini-2.5-pro"),
             verbose=True,
             allow_delegation=False,
         )

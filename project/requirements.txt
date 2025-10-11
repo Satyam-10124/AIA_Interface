@@ -1,0 +1,4 @@
+crewai==0.193.2
+crewai-tools==0.75.0
+python-dotenv==1.0.0
+pytest==8.2.2
