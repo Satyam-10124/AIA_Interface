@@ -14,7 +14,14 @@ import re
 load_dotenv()
 
 # Import crew setup for UI generation
-from ui_generator_crew import ui_generator_crew, AgentConfigOutput, UIComponentsOutput, UICodeOutput
+from ui_generator_crew import (
+    ui_generator_crew,
+    AgentConfigOutput,
+    UIComponentsOutput,
+    UICodeOutput,
+    QAReportOutput,              # PHASE 1: QA Report
+    AccessibilityReportOutput    # PHASE 1: Accessibility Report
+)
 
 # Import utilities
 from utils.environment_validator import validate_or_exit
@@ -173,6 +180,9 @@ def generate_ui(args):
         OutputExtractor.diagnostic_dump(ui_generator_crew, log)
     
     # Extract outputs using the new robust extractor
+    qa_report = None
+    accessibility_report = None
+    
     for i, task_instance in enumerate(ui_generator_crew.tasks):
         task_output_item = task_instance.output
         
@@ -182,9 +192,39 @@ def generate_ui(args):
         
         log(f"Processing output for task {i+1}: {task_instance.description[:50]}...")
         
-        # Check if this is a code generation task (HTML, CSS, JS)
-        # Tasks 3, 4, 5 are code generation tasks
-        if i >= 2:  # HTML, CSS, JS tasks
+        # Get actual output for analysis
+        actual_output = None
+        if hasattr(task_output_item, 'pydantic') and task_output_item.pydantic:
+            actual_output = task_output_item.pydantic
+        elif hasattr(task_output_item, 'exported_output') and task_output_item.exported_output:
+            actual_output = task_output_item.exported_output
+        elif hasattr(task_output_item, 'raw_output') and task_output_item.raw_output:
+            actual_output = task_output_item.raw_output
+        
+        # Debug: Log output type
+        if args.verbose and actual_output:
+            log(f"Task {i+1} output type: {type(actual_output).__name__}")
+        
+        # Check output type
+        if isinstance(actual_output, QAReportOutput):
+            qa_report = actual_output
+            log(f"✅ QA Report received - Passed: {qa_report.passed}")
+        elif isinstance(actual_output, AccessibilityReportOutput):
+            accessibility_report = actual_output
+            log(f"✅ Accessibility Report received - WCAG Level: {accessibility_report.wcag_level}")
+        elif isinstance(actual_output, AgentConfigOutput):
+            log(f"Task output is AgentConfigOutput")
+            log(f"  Agent Type: {actual_output.agent_type}")
+            log(f"  Key Capabilities: {', '.join(actual_output.key_capabilities[:3])}...")
+            log(f"  Recommended Design System: {actual_output.recommended_design_system}")
+        elif isinstance(actual_output, UIComponentsOutput):
+            log(f"Task output is UIComponentsOutput")
+            log(f"  Components: {', '.join(actual_output.components[:5])}...")
+            log(f"  Layout Structure: {actual_output.layout_structure[:80]}...")
+            # Store design tokens for reference
+            ui_code_dict['design_tokens.json'] = json.dumps(actual_output.design_tokens, indent=2)
+        elif i >= 2 and i <= 4:  # HTML, CSS, JS tasks (tasks 3, 4, 5)
+            # Check if this is a code generation task
             success, filename, code = OutputExtractor.extract_ui_code(task_output_item, i+1, log)
             
             if success and filename and code:
@@ -192,27 +232,8 @@ def generate_ui(args):
                 log(f"📝 Saved {filename} ({len(code)} characters)")
             else:
                 log(f"⚠️  Failed to extract code from task {i+1}")
-        else:
-            # Handle analysis and design tasks (non-code outputs)
-            actual_output = None
-            if hasattr(task_output_item, 'exported_output') and task_output_item.exported_output:
-                actual_output = task_output_item.exported_output
-            elif hasattr(task_output_item, 'raw_output') and task_output_item.raw_output:
-                actual_output = task_output_item.raw_output
-            
-            if isinstance(actual_output, AgentConfigOutput):
-                log(f"Task output is AgentConfigOutput")
-                log(f"  Agent Type: {actual_output.agent_type}")
-                log(f"  Key Capabilities: {', '.join(actual_output.key_capabilities[:3])}...")
-                log(f"  Recommended Design System: {actual_output.recommended_design_system}")
-            elif isinstance(actual_output, UIComponentsOutput):
-                log(f"Task output is UIComponentsOutput")
-                log(f"  Components: {', '.join(actual_output.components[:5])}...")
-                log(f"  Layout Structure: {actual_output.layout_structure[:80]}...")
-                # Store design tokens for reference
-                ui_code_dict['design_tokens.json'] = json.dumps(actual_output.design_tokens, indent=2)
     
-    return True, ui_code_dict, logs
+    return True, ui_code_dict, logs, qa_report, accessibility_report
 
 def save_files(ui_code_dict, output_dir):
     """Save the generated UI files to the specified directory."""
@@ -275,7 +296,7 @@ def main():
     print(f"  • Output Directory: {output_path}\n")
     
     print("🚀 Starting UI/UX generation process...")
-    success, ui_code_dict, logs = generate_ui(args)
+    success, ui_code_dict, logs, qa_report, accessibility_report = generate_ui(args)
     
     if not success:
         print("\n❌ UI/UX generation failed. See logs for details.")
@@ -300,13 +321,113 @@ def main():
     for filename in ui_code_dict.keys():
         print(f"  • {filename}")
     
+    # PHASE 1: Display QA Report
+    if qa_report:
+        print("\n" + "=" * 60)
+        print("🧪 QUALITY ASSURANCE REPORT")
+        print("=" * 60)
+        
+        if qa_report.passed:
+            print("✅ Overall Status: PASSED")
+        else:
+            print("❌ Overall Status: FAILED")
+        
+        print(f"\n📊 Validation Results:")
+        print(f"  • HTML Valid: {'✅' if qa_report.html_valid else '❌'}")
+        print(f"  • CSS Valid: {'✅' if qa_report.css_valid else '❌'}")
+        print(f"  • JavaScript Valid: {'✅' if qa_report.js_valid else '❌'}")
+        print(f"  • Syntax Valid: {'✅' if qa_report.syntax_valid else '❌'}")
+        
+        if qa_report.issues_found:
+            print(f"\n⚠️  Issues Found ({len(qa_report.issues_found)}):")
+            for issue in qa_report.issues_found[:5]:  # Show first 5
+                print(f"  • {issue}")
+            if len(qa_report.issues_found) > 5:
+                print(f"  ... and {len(qa_report.issues_found) - 5} more")
+        else:
+            print("\n✅ No issues found!")
+        
+        if qa_report.severity_levels:
+            print(f"\n📈 Severity Breakdown:")
+            for severity, count in qa_report.severity_levels.items():
+                emoji = "🔴" if severity == "critical" else "🟠" if severity == "high" else "🟡" if severity == "medium" else "🟢"
+                print(f"  {emoji} {severity.capitalize()}: {count}")
+        
+        if qa_report.recommendations:
+            print(f"\n💡 Recommendations:")
+            for rec in qa_report.recommendations[:3]:  # Show first 3
+                print(f"  • {rec}")
+            if len(qa_report.recommendations) > 3:
+                print(f"  ... and {len(qa_report.recommendations) - 3} more")
+    
+    # PHASE 1: Display Accessibility Report
+    if accessibility_report:
+        print("\n" + "=" * 60)
+        print("♿ ACCESSIBILITY AUDIT REPORT")
+        print("=" * 60)
+        
+        print(f"\n🏆 WCAG Compliance Level: {accessibility_report.wcag_level}")
+        
+        if accessibility_report.passed:
+            print("✅ Status: Meets WCAG 2.1 AA Standards")
+        else:
+            print("❌ Status: Does NOT meet WCAG 2.1 AA Standards")
+        
+        print(f"\n📊 Accessibility Scores:")
+        print(f"  • ARIA Implementation: {accessibility_report.aria_score}/100")
+        print(f"  • Keyboard Navigable: {'✅' if accessibility_report.keyboard_navigable else '❌'}")
+        print(f"  • Screen Reader Compatible: {'✅' if accessibility_report.screen_reader_compatible else '❌'}")
+        print(f"  • Color Contrast (4.5:1): {'✅' if accessibility_report.contrast_ratio_passed else '❌'}")
+        print(f"  • Semantic HTML5: {'✅' if accessibility_report.semantic_html_used else '❌'}")
+        
+        if accessibility_report.violations:
+            print(f"\n⚠️  Violations Found ({len(accessibility_report.violations)}):")
+            for violation in accessibility_report.violations[:3]:  # Show first 3
+                element = violation.get('element', 'Unknown')
+                guideline = violation.get('guideline', 'N/A')
+                severity = violation.get('severity', 'medium')
+                fix = violation.get('fix', 'No fix provided')
+                print(f"  • [{severity.upper()}] {element}")
+                print(f"    Guideline: WCAG {guideline}")
+                print(f"    Fix: {fix[:100]}..." if len(fix) > 100 else f"    Fix: {fix}")
+            if len(accessibility_report.violations) > 3:
+                print(f"  ... and {len(accessibility_report.violations) - 3} more violations")
+        else:
+            print("\n✅ No accessibility violations found!")
+        
+        if accessibility_report.recommendations:
+            print(f"\n💡 Improvement Recommendations:")
+            for rec in accessibility_report.recommendations[:3]:  # Show first 3
+                print(f"  • {rec}")
+            if len(accessibility_report.recommendations) > 3:
+                print(f"  ... and {len(accessibility_report.recommendations) - 3} more")
+    
     saved_files = save_files(ui_code_dict, output_path)
     
-    print(f"\n💾 Files saved to: {args.output_dir}")
+    print("\n" + "=" * 60)
+    print(f"💾 FILES SAVED TO: {output_path}")
+    print("=" * 60)
     for file_path in saved_files:
         print(f"  • {file_path}")
     
-    print("\n🎉 Done! You can now use the generated UI/UX files in your project.")
+    # Save reports as JSON
+    if qa_report or accessibility_report:
+        reports_path = output_path / "reports"
+        reports_path.mkdir(exist_ok=True)
+        
+        if qa_report:
+            qa_file = reports_path / "qa_report.json"
+            with open(qa_file, 'w') as f:
+                json.dump(qa_report.dict(), f, indent=2)
+            print(f"  • {qa_file} (QA Report)")
+        
+        if accessibility_report:
+            a11y_file = reports_path / "accessibility_report.json"
+            with open(a11y_file, 'w') as f:
+                json.dump(accessibility_report.dict(), f, indent=2)
+            print(f"  • {a11y_file} (Accessibility Report)")
+    
+    print("\n🎉 Done! Your UI has been tested for quality and accessibility.")
     
     return 0
 
