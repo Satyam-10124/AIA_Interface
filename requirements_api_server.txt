@@ -1,0 +1,22 @@
+# API Server Requirements
+# Install with: pip install -r requirements_api_server.txt
+
+# Flask and related
+Flask==3.0.0
+flask-cors==4.0.0
+Werkzeug==3.0.1
+
+# Core dependencies (from UI and Agent generators)
+crewai==0.193.2
+crewai-tools==0.75.0
+python-dotenv==1.0.0
+
+# Additional API utilities
+requests==2.31.0
+pydantic==2.5.0
+
+# Swagger/OpenAPI Documentation
+flasgger==0.9.7.1
+
+# Optional: Production server (recommended for deployment)
+gunicorn==21.2.0

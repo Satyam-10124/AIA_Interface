@@ -10,8 +10,13 @@ from typing import Dict, Any
 
 from dotenv import load_dotenv
 
-from .agent_generator_crew import agent_generator_crew
-from .agent_schemas import AgentFilesBundle, VerificationReport, AgentSpecOutput, AgentFileOutput
+# Import utilities from parent directory
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from ai_agent_generator.agent_generator_crew import agent_generator_crew
+from ai_agent_generator.agent_schemas import AgentFilesBundle, VerificationReport, AgentSpecOutput, AgentFileOutput
+from utils.environment_validator import validate_or_exit
 
 # Load env
 load_dotenv()
@@ -192,17 +197,22 @@ def main() -> int:
     output_dir = Path(args.output_dir).resolve()
     agent_root = output_dir / name_slug
 
-    print("\n==============================")
+    print("\n" + "=" * 60)
     print("🤖 AI Agent Generator CLI")
-    print("==============================\n")
-    print("📋 Idea:", idea[:120] + ("..." if len(idea) > 120 else ""))
-    print("📛 Agent Name:", agent_name)
+    print("=" * 60)
+    print()
+    
+    # 🔥 NEW: Pre-flight validation
+    validate_or_exit(output_dir=agent_root)
+    
+    print("📝 Agent Idea:", idea[:100] + ("..." if len(idea) > 100 else ""))
+    if agent_name:
+        print("📛 Display Name:", agent_name)
     print("📁 Output Root:", str(agent_root))
 
     inputs: Dict[str, Any] = {
         "idea": idea,
         "agent_name": agent_name,
-        "agent_name_slug": name_slug,
         "output_dir": str(output_dir),
         "output_root": str(agent_root),
         "serper_available": str(serper_available).lower(),

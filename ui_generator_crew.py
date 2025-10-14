@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, Process, LLM
 from langchain_google_genai import ChatGoogleGenerativeAI
-from crewai_tools import CodeInterpreterTool, SerperDevTool, FileWriterTool
+from crewai_tools import CodeInterpreterTool, SerperDevTool
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Annotated
 
@@ -42,7 +42,7 @@ llm = LLM(
 # Initialize Tools
 code_interpreter = CodeInterpreterTool(llm=llm)
 serper_tool = SerperDevTool()
-file_writer_tool = FileWriterTool()
+# Note: FileWriterTool removed - agents must return structured Pydantic models only
 
 # AGENTS
 agent_analyzer = Agent(
@@ -68,7 +68,7 @@ ui_designer = Agent(
     ),
     verbose=True,
     allow_delegation=False,
-    tools=[serper_tool,file_writer_tool],
+    tools=[serper_tool],  # Only research tools, no file writing
     llm=llm
 )
 
@@ -78,11 +78,13 @@ frontend_developer = Agent(
     backstory=(
         "A talented frontend developer with experience in building interfaces for AI applications. "
         "Skilled in HTML, CSS, JavaScript, and modern frontend frameworks. "
-        "Focuses on creating performant, accessible, and visually appealing implementations of UI/UX designs."
+        "Focuses on creating performant, accessible, and visually appealing implementations of UI/UX designs. "
+        "IMPORTANT: You must ALWAYS return your output as a properly formatted UICodeOutput Pydantic model. "
+        "Never use file writing tools - only return structured JSON data."
     ),
     verbose=True,
     allow_delegation=False,
-    tools=[code_interpreter, file_writer_tool],
+    tools=[code_interpreter],  # Only analysis tools, no file writing
     llm=llm
 )
 
@@ -134,13 +136,20 @@ task_generate_html = Task(
         "1. Review the agent analysis and UI design from previous tasks\n"
         "2. Create the HTML structure for the AI agent interface\n"
         "3. Ensure the HTML is semantic, accessible, and follows best practices\n"
-        "4. Include appropriate containers for all the required components run the code and fix the errors if any\n"
-        "5. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
-        "   {\n"
-        "     \"filename\": \"index.html\",\n"
-        "     \"code\": \"<!-- Full HTML code here -->\",\n"
-        "     \"description\": \"Brief description of the HTML structure\"\n"
-        "   }\n"
+        "4. Include appropriate containers for all the required components\n"
+        "\n"
+        "CRITICAL INSTRUCTIONS:\n"
+        "- DO NOT use any file writing tools\n"
+        "- ONLY return a UICodeOutput Pydantic model with this exact structure:\n"
+        "  {\"filename\": \"index.html\", \"code\": \"...\", \"description\": \"...\"}\n"
+        "- The 'code' field must contain the complete HTML as a string\n"
+        "- Ensure the JSON is valid and properly escaped\n"
+        "\n"
+        "LINKING REQUIREMENTS (VERY IMPORTANT):\n"
+        "- In the <head> section, include: <link rel=\"stylesheet\" href=\"styles.css\">\n"
+        "- Before the closing </body> tag, include: <script src=\"app.js\"></script>\n"
+        "- These links are REQUIRED for the CSS and JavaScript to work\n"
+        "- DO NOT comment out these tags - they must be active\n"
     ),
     expected_output="A UICodeOutput Pydantic model containing the filename, HTML code, and description",
     agent=frontend_developer,
@@ -156,12 +165,13 @@ task_generate_css = Task(
         "4. Ensure the styles are responsive and accessible\n"
         "5. If custom design preferences were specified, make sure your CSS implementation\n"
         "   faithfully reflects these preferences (e.g., 'minimalist', 'colorful', etc.)\n"
-        "6. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
-        "   {\n"
-        "     \"filename\": \"styles.css\",\n"
-        "     \"code\": \"/* Full CSS code here */\",\n"
-        "     \"description\": \"Brief description of the CSS styles\"\n"
-        "   }\n"
+        "\n"
+        "CRITICAL INSTRUCTIONS:\n"
+        "- DO NOT use any file writing tools\n"
+        "- ONLY return a UICodeOutput Pydantic model with this exact structure:\n"
+        "  {\"filename\": \"styles.css\", \"code\": \"...\", \"description\": \"...\"}\n"
+        "- The 'code' field must contain the complete CSS as a string\n"
+        "- Ensure the JSON is valid and properly escaped\n"
     ),
     expected_output="A UICodeOutput Pydantic model containing the filename, CSS code, and description",
     agent=frontend_developer,
@@ -175,12 +185,13 @@ task_generate_javascript = Task(
         "2. Create the JavaScript code for the AI agent interface\n"
         "3. Implement the interaction model from the UI design\n"
         "4. Include functionality for handling user input and displaying agent responses\n"
-        "5. YOU MUST RETURN YOUR OUTPUT IN THE FOLLOWING JSON SCHEMA FORMAT:\n"
-        "   {\n"
-        "     \"filename\": \"app.js\",\n"
-        "     \"code\": \"// Full JavaScript code here\",\n"
-        "     \"description\": \"Brief description of the JavaScript functionality\"\n"
-        "   }\n"
+        "\n"
+        "CRITICAL INSTRUCTIONS:\n"
+        "- DO NOT use any file writing tools\n"
+        "- ONLY return a UICodeOutput Pydantic model with this exact structure:\n"
+        "  {\"filename\": \"app.js\", \"code\": \"...\", \"description\": \"...\"}\n"
+        "- The 'code' field must contain the complete JavaScript as a string\n"
+        "- Ensure the JSON is valid and properly escaped\n"
     ),
     expected_output="A UICodeOutput Pydantic model containing the filename, JavaScript code, and description",
     agent=frontend_developer,

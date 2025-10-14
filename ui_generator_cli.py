@@ -16,6 +16,10 @@ load_dotenv()
 # Import crew setup for UI generation
 from ui_generator_crew import ui_generator_crew, AgentConfigOutput, UIComponentsOutput, UICodeOutput
 
+# Import utilities
+from utils.environment_validator import validate_or_exit
+from utils.output_extractor import OutputExtractor
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -93,16 +97,23 @@ def parse_arguments():
     )
     
     parser.add_argument(
+        "--output-name", "-on",
+        type=str,
+        default="default_ui",
+        help="Name for the generated UI project (creates subdirectory)"
+    )
+    
+    parser.add_argument(
         "--output-dir", "-o",
         type=str,
         default="./generated_ui",
-        help="Directory to save the generated UI files"
+        help="Base directory to save generated UI files"
     )
     
     parser.add_argument(
         "--verbose", "-v",
         action="store_true",
-        help="Enable verbose output"
+        help="Enable verbose output and diagnostics"
     )
     
     return parser.parse_args()
@@ -140,6 +151,7 @@ def generate_ui(args):
     
     # Kickoff AI crew for UI generation
     log("Starting crewAI agents to analyze agent requirements and generate UI/UX...")
+    log("Agent pipeline: Analysis → Design → HTML → CSS → JavaScript")
     try:
         crew_result = ui_generator_crew.kickoff(inputs=config)
         log("Crew kickoff completed successfully.")
@@ -155,111 +167,50 @@ def generate_ui(args):
         return False, ui_code_dict, logs
     
     log(f"Processing outputs from {len(ui_generator_crew.tasks)} AI agent tasks.")
-    log("Agent pipeline: Analysis → Design → HTML → CSS → JavaScript")
     
+    # Show diagnostic info if verbose
+    if args.verbose:
+        OutputExtractor.diagnostic_dump(ui_generator_crew, log)
+    
+    # Extract outputs using the new robust extractor
     for i, task_instance in enumerate(ui_generator_crew.tasks):
         task_output_item = task_instance.output
+        
         if not task_output_item:
             log(f"Task {i+1} has no output object.")
             continue
         
         log(f"Processing output for task {i+1}: {task_instance.description[:50]}...")
         
-        actual_output = None
-        if hasattr(task_output_item, 'exported_output') and task_output_item.exported_output is not None:
-            actual_output = task_output_item.exported_output
-            log(f"Task {i+1} used exported_output (Pydantic model)")
-        elif hasattr(task_output_item, 'raw_output') and task_output_item.raw_output is not None:
-            actual_output = task_output_item.raw_output
-            log(f"Task {i+1} used raw_output")
+        # Check if this is a code generation task (HTML, CSS, JS)
+        # Tasks 3, 4, 5 are code generation tasks
+        if i >= 2:  # HTML, CSS, JS tasks
+            success, filename, code = OutputExtractor.extract_ui_code(task_output_item, i+1, log)
             
-            # Try to parse as JSON if it's a string
-            if isinstance(actual_output, str):
-                try:
-                    json_data = json.loads(actual_output)
-                    if isinstance(json_data, dict) and 'filename' in json_data and 'code' in json_data:
-                        log(f"Successfully parsed JSON from raw_output with filename: {json_data['filename']}")
-                        ui_code_dict[json_data['filename']] = json_data['code']
-                        continue
-                except json.JSONDecodeError:
-                    log("Could not parse raw_output as JSON, continuing with regular processing.")
-        else:
-            log(f"Task {i+1} had no recognizable output content.")
-            continue
-        
-        if isinstance(actual_output, UICodeOutput):
-            log(f"Task output is UICodeOutput: {actual_output.filename}")
-            ui_code_dict[actual_output.filename] = actual_output.code
-            if actual_output.description:
-                log(f"Description: {actual_output.description}")
-        elif isinstance(actual_output, AgentConfigOutput):
-            log(f"Task output is AgentConfigOutput")
-            log(f"Agent Type: {actual_output.agent_type}")
-            log(f"Key Capabilities: {', '.join(actual_output.key_capabilities)}")
-            log(f"Recommended Design System: {actual_output.recommended_design_system}")
-        elif isinstance(actual_output, UIComponentsOutput):
-            log(f"Task output is UIComponentsOutput")
-            log(f"Components: {', '.join(actual_output.components)}")
-            log(f"Layout Structure: {actual_output.layout_structure}")
-            # Store design tokens for later use in CSS generation
-            ui_code_dict['design_tokens.json'] = json.dumps(actual_output.design_tokens, indent=2)
-        elif isinstance(actual_output, str):
-            log(f"Task output {i+1} was a raw string. Attempting to parse as code.")
-            # Try to determine file type based on content
-            if "<html" in actual_output or "<!DOCTYPE" in actual_output:
-                ui_code_dict["index.html"] = actual_output
-                log("Detected HTML content and saved as index.html")
-            elif "{" in actual_output and "}" in actual_output and ("color" in actual_output or "margin" in actual_output):
-                ui_code_dict["styles.css"] = actual_output
-                log("Detected CSS content and saved as styles.css")
-            elif "function" in actual_output or "const" in actual_output or "let" in actual_output:
-                ui_code_dict["app.js"] = actual_output
-                log("Detected JavaScript content and saved as app.js")
+            if success and filename and code:
+                ui_code_dict[filename] = code
+                log(f"📝 Saved {filename} ({len(code)} characters)")
             else:
-                ui_code_dict[f"task_{i+1}_raw_output.txt"] = actual_output
-                log("Could not determine file type, saved as raw output")
+                log(f"⚠️  Failed to extract code from task {i+1}")
         else:
-            log(f"Task output {i+1} was not a recognized Pydantic model nor a raw string.")
-    
-    # If no UI code was generated, try to extract from raw results
-    if not ui_code_dict:
-        log("No structured UI code was extracted. Attempting regex-based extraction...")
-        
-        for i, task_instance in enumerate(ui_generator_crew.tasks):
-            if hasattr(task_instance, '_result') and task_instance._result:
-                raw_result = str(task_instance._result)
-                
-                # Look for code blocks in markdown format (capture language)
-                blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', raw_result, re.DOTALL)
-                
-                if blocks:
-                    for j, (lang, code_block) in enumerate(blocks):
-                        lang = (lang or '').lower()
-                        # Handle JSON blocks that contain {"filename": ..., "code": ...}
-                        if lang == 'json':
-                            try:
-                                parsed = json.loads(code_block)
-                                if isinstance(parsed, dict) and 'filename' in parsed and 'code' in parsed:
-                                    filename = parsed['filename']
-                                    ui_code_dict[filename] = parsed['code']
-                                    log(f"Extracted JSON block with filename: {filename}")
-                                    continue
-                            except Exception:
-                                # Not a clean JSON payload, fall back to type inference
-                                pass
-                        
-                        # Try to determine file type based on content
-                        if "<html" in code_block or "<!DOCTYPE" in code_block:
-                            filename = "index.html"
-                        elif "{" in code_block and "}" in code_block and ("color" in code_block or "margin" in code_block):
-                            filename = "styles.css"
-                        elif "function" in code_block or "const" in code_block or "let" in code_block:
-                            filename = "app.js"
-                        else:
-                            filename = f"code_block_{j+1}.txt"
-                        
-                        log(f"Extracted code block as {filename}")
-                        ui_code_dict[filename] = code_block.strip()
+            # Handle analysis and design tasks (non-code outputs)
+            actual_output = None
+            if hasattr(task_output_item, 'exported_output') and task_output_item.exported_output:
+                actual_output = task_output_item.exported_output
+            elif hasattr(task_output_item, 'raw_output') and task_output_item.raw_output:
+                actual_output = task_output_item.raw_output
+            
+            if isinstance(actual_output, AgentConfigOutput):
+                log(f"Task output is AgentConfigOutput")
+                log(f"  Agent Type: {actual_output.agent_type}")
+                log(f"  Key Capabilities: {', '.join(actual_output.key_capabilities[:3])}...")
+                log(f"  Recommended Design System: {actual_output.recommended_design_system}")
+            elif isinstance(actual_output, UIComponentsOutput):
+                log(f"Task output is UIComponentsOutput")
+                log(f"  Components: {', '.join(actual_output.components[:5])}...")
+                log(f"  Layout Structure: {actual_output.layout_structure[:80]}...")
+                # Store design tokens for reference
+                ui_code_dict['design_tokens.json'] = json.dumps(actual_output.design_tokens, indent=2)
     
     return True, ui_code_dict, logs
 
@@ -309,13 +260,19 @@ def main():
     print(f"🤖 AI Agent UI/UX Generator CLI")
     print(f"{'=' * 60}\n")
     
+    # Construct full output path
+    output_path = Path(args.output_dir) / args.output_name
+    
+    # 🔥 NEW: Pre-flight validation
+    validate_or_exit(output_dir=output_path)
+    
     print("📋 Generation Parameters:")
     print(f"  • Agent Description: {args.agent_description[:50]}...")
     print(f"  • Agent Capabilities: {args.agent_capabilities[:50]}...")
     print(f"  • Theme: {args.theme}")
     print(f"  • Layout: {args.layout}")
     print(f"  • Color Scheme: {args.color_scheme}")
-    print(f"  • Output Directory: {args.output_dir}\n")
+    print(f"  • Output Directory: {output_path}\n")
     
     print("🚀 Starting UI/UX generation process...")
     success, ui_code_dict, logs = generate_ui(args)
@@ -329,6 +286,13 @@ def main():
     
     if not ui_code_dict:
         print("\n⚠️ No UI code was generated.")
+        print("\n💡 Troubleshooting:")
+        print("   1. Run with --verbose to see detailed extraction logs")
+        print("   2. Check that GEMINI_API_KEY is valid")
+        print("   3. Ensure you have network connectivity")
+        print("\n📝 Logs:")
+        for log_msg in logs[-10:]:  # Show last 10 log messages
+            print(f"  • {log_msg}")
         return 1
     
     print("\n✅ UI/UX generation completed successfully!")
@@ -336,7 +300,7 @@ def main():
     for filename in ui_code_dict.keys():
         print(f"  • {filename}")
     
-    saved_files = save_files(ui_code_dict, args.output_dir)
+    saved_files = save_files(ui_code_dict, output_path)
     
     print(f"\n💾 Files saved to: {args.output_dir}")
     for file_path in saved_files:

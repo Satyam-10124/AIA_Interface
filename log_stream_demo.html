@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrewAI Log Streamer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #4ec9b0;
+            margin-bottom: 20px;
+        }
+        
+        .input-section {
+            background: #252526;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #569cd6;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            color: #d4d4d4;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-family: inherit;
+        }
+        
+        button {
+            background: #0e639c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: #1177bb;
+        }
+        
+        button:disabled {
+            background: #3e3e42;
+            cursor: not-allowed;
+        }
+        
+        .log-container {
+            background: #252526;
+            padding: 20px;
+            border-radius: 8px;
+            height: 500px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #3e3e42;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-time {
+            color: #608b4e;
+        }
+        
+        .log-level-INFO {
+            color: #4ec9b0;
+        }
+        
+        .log-level-ERROR {
+            color: #f48771;
+        }
+        
+        .log-level-SUCCESS {
+            color: #89d185;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-pending {
+            background: #854cc7;
+        }
+        
+        .status-processing {
+            background: #0e639c;
+        }
+        
+        .status-completed {
+            background: #107c10;
+        }
+        
+        .status-failed {
+            background: #e81123;
+        }
+        
+        .heartbeat {
+            color: #3e3e42;
+            font-style: italic;
+        }
+        
+        .job-info {
+            background: #2d2d30;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .job-info-item {
+            margin: 5px 0;
+        }
+        
+        .job-info-label {
+            color: #569cd6;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 CrewAI Real-Time Log Streamer</h1>
+        
+        <div class="input-section">
+            <label for="jobId">Job ID:</label>
+            <input type="text" id="jobId" placeholder="Enter job ID to stream logs...">
+            
+            <div>
+                <button onclick="startStreaming()">🚀 Start Streaming</button>
+                <button onclick="stopStreaming()">⏹️ Stop</button>
+                <button onclick="clearLogs()">🗑️ Clear Logs</button>
+                <button onclick="fetchHistoryLogs()">📥 Fetch Full History</button>
+            </div>
+        </div>
+        
+        <div class="job-info" id="jobInfo" style="display: none;">
+            <div class="job-info-item">
+                <span class="job-info-label">Job ID:</span> <span id="infoJobId"></span>
+            </div>
+            <div class="job-info-item">
+                <span class="job-info-label">Status:</span> <span id="infoStatus"></span>
+            </div>
+            <div class="job-info-item">
+                <span class="job-info-label">Connected:</span> <span id="infoConnected">No</span>
+            </div>
+        </div>
+        
+        <div class="log-container" id="logContainer">
+            <div style="color: #608b4e;">Logs will appear here...</div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:5080';
+        let eventSource = null;
+        let autoScroll = true;
+        
+        function startStreaming() {
+            const jobId = document.getElementById('jobId').value.trim();
+            
+            if (!jobId) {
+                alert('Please enter a Job ID');
+                return;
+            }
+            
+            // Stop existing connection
+            stopStreaming();
+            
+            // Clear logs
+            clearLogs();
+            
+            // Show job info
+            document.getElementById('jobInfo').style.display = 'block';
+            document.getElementById('infoJobId').textContent = jobId;
+            document.getElementById('infoConnected').textContent = 'Connecting...';
+            
+            // Start SSE connection
+            eventSource = new EventSource(`${API_BASE}/api/v1/job/${jobId}/logs/stream`);
+            
+            eventSource.onopen = () => {
+                console.log('SSE connection opened');
+                document.getElementById('infoConnected').textContent = 'Yes ✅';
+                addLog('Connected to log stream', 'SUCCESS');
+            };
+            
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'connected') {
+                    updateStatus(data.status);
+                    addLog(`Connected to job ${data.job_id}`, 'INFO');
+                }
+                else if (data.type === 'log') {
+                    addLog(data.message);
+                }
+                else if (data.type === 'status') {
+                    updateStatus(data.status);
+                    if (data.final) {
+                        addLog(`Job ${data.status}!`, data.status === 'completed' ? 'SUCCESS' : 'ERROR');
+                        setTimeout(() => stopStreaming(), 2000);
+                    }
+                }
+                else if (data.type === 'heartbeat') {
+                    // Heartbeat - keep connection alive
+                    console.log('Heartbeat received');
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('SSE error:', error);
+                document.getElementById('infoConnected').textContent = 'Error ❌';
+                addLog('Connection error - retrying...', 'ERROR');
+            };
+        }
+        
+        function stopStreaming() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                document.getElementById('infoConnected').textContent = 'No';
+                addLog('Stream stopped', 'INFO');
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+        
+        async function fetchHistoryLogs() {
+            const jobId = document.getElementById('jobId').value.trim();
+            
+            if (!jobId) {
+                alert('Please enter a Job ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/job/${jobId}/logs`);
+                const data = await response.json();
+                
+                clearLogs();
+                
+                if (data.logs && data.logs.length > 0) {
+                    data.logs.forEach(log => addLog(log));
+                    addLog(`Loaded ${data.total_logs} log entries`, 'INFO');
+                } else {
+                    addLog('No logs found for this job', 'INFO');
+                }
+                
+                updateStatus(data.status);
+            } catch (error) {
+                addLog(`Failed to fetch logs: ${error.message}`, 'ERROR');
+            }
+        }
+        
+        function addLog(message, levelOverride = null) {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            // Parse log level from message if present
+            let level = 'INFO';
+            let displayMessage = message;
+            
+            if (levelOverride) {
+                level = levelOverride;
+            } else if (message.includes('ERROR:')) {
+                level = 'ERROR';
+            } else if (message.includes('SUCCESS:')) {
+                level = 'SUCCESS';
+            }
+            
+            entry.innerHTML = `<span class="log-level-${level}">${displayMessage}</span>`;
+            container.appendChild(entry);
+            
+            // Auto-scroll to bottom
+            if (autoScroll) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+        
+        function updateStatus(status) {
+            const statusEl = document.getElementById('infoStatus');
+            statusEl.innerHTML = `<span class="status status-${status}">${status.toUpperCase()}</span>`;
+        }
+        
+        // Check for URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const jobIdParam = urlParams.get('job_id');
+        if (jobIdParam) {
+            document.getElementById('jobId').value = jobIdParam;
+            startStreaming();
+        }
+    </script>
+</body>
+</html>

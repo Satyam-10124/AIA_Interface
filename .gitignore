@@ -1,7 +1,8 @@
 # Python virtual environment
+.venv/
 venv/
-env/
 ENV/
+env/
 .venv/
 .env
 
@@ -9,34 +10,53 @@ ENV/
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
-dist/
+*.so
+.Python
 build/
-*.egg-info/
+develop-eggs/
+dist/
+downloads/
+eggs/
 .eggs/
-pip-wheel-metadata/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Generated files
-static/generated/
-generated_ui/
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
 
-
-# IDE specific files
-.idea/
+# IDEs
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# OS specific files
+# Environment variables
+.env
+
+# macOS
 .DS_Store
-Thumbs.db
+
+# Generated artifacts (keep repo clean)
+generated_agents/
+generated_ui/
+
+# Checkpoints and caches
+.checkpoints/
+*.cache
 
 # Logs
 *.log
 logs/
-
-# Test and coverage artifacts
 .pytest_cache/
 htmlcov/
 .coverage

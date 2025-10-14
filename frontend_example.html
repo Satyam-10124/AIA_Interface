@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIA Interface - Live UI Generator</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0e27; color: #e0e0e0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { margin-bottom: 30px; color: #fff; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; }
+        input, textarea, select { width: 100%; padding: 12px; background: #1a1f3a; border: 1px solid #333; border-radius: 6px; color: #fff; font-family: inherit; }
+        button { background: #3B82F6; color: white; border: none; padding: 14px 28px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        button:hover { background: #2563EB; }
+        .status { margin-top: 20px; padding: 16px; background: #1a1f3a; border-radius: 6px; }
+        .preview-container { margin-top: 30px; border: 2px solid #333; border-radius: 6px; overflow: hidden; }
+        iframe { width: 100%; height: 800px; border: none; background: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Interface Generator - Live Demo</h1>
+        
+        <div class="form-group">
+            <label>Agent Description:</label>
+            <textarea id="description" rows="3" placeholder="e.g., A customer support chatbot that helps users..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Agent Capabilities:</label>
+            <input id="capabilities" placeholder="e.g., answer questions, create tickets, escalate issues">
+        </div>
+        
+        <div class="form-group">
+            <label>Theme:</label>
+            <select id="theme">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </div>
+        
+        <button onclick="generateUI()">🚀 Generate UI</button>
+        
+        <div class="status" id="status" style="display:none"></div>
+        <div class="preview-container" id="preview" style="display:none">
+            <iframe id="preview-iframe"></iframe>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:5080';
+        let currentJobId = null;
+        
+        async function generateUI() {
+            const description = document.getElementById('description').value;
+            const capabilities = document.getElementById('capabilities').value;
+            const theme = document.getElementById('theme').value;
+            
+            if (!description || !capabilities) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = '⏳ Creating generation job...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/ui/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent_description: description,
+                        agent_capabilities: capabilities,
+                        theme: theme
+                    })
+                });
+                
+                const data = await response.json();
+                currentJobId = data.job_id;
+                
+                statusDiv.textContent = `✅ Job created: ${currentJobId}\n⏳ Generating UI...`;
+                pollJobStatus();
+                
+            } catch (error) {
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        async function pollJobStatus() {
+            const statusDiv = document.getElementById('status');
+            const previewContainer = document.getElementById('preview');
+            const iframe = document.getElementById('preview-iframe');
+            
+            const checkStatus = async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/v1/ui/job/${currentJobId}`);
+                    const job = await response.json();
+                    
+                    if (job.status === 'completed') {
+                        statusDiv.textContent = `✅ UI generated successfully!\n📁 Files: ${job.files.join(', ')}`;
+                        previewContainer.style.display = 'block';
+                        iframe.src = `${API_BASE}/api/v1/ui/preview/${currentJobId}`;
+                    } else if (job.status === 'failed') {
+                        statusDiv.textContent = `❌ Generation failed: ${job.error}`;
+                    } else {
+                        statusDiv.textContent = `⏳ Status: ${job.status}...\nPlease wait, this may take 1-3 minutes.`;
+                        setTimeout(checkStatus, 2000);
+                    }
+                } catch (error) {
+                    statusDiv.textContent = `❌ Error checking status: ${error.message}`;
+                }
+            };
+            
+            checkStatus();
+        }
+    </script>
+</body>
+</html>
