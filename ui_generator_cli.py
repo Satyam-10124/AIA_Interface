@@ -19,8 +19,10 @@ from ui_generator_crew import (
     AgentConfigOutput,
     UIComponentsOutput,
     UICodeOutput,
-    QAReportOutput,              # PHASE 1: QA Report
-    AccessibilityReportOutput    # PHASE 1: Accessibility Report
+    QAReportOutput,               # PHASE 1: QA Report
+    AccessibilityReportOutput,    # PHASE 1: Accessibility Report
+    RevisedCodeOutput,            # PHASE 2: Revised Code
+    PerformanceReportOutput       # PHASE 2: Performance Report
 )
 
 # Import utilities
@@ -182,6 +184,8 @@ def generate_ui(args):
     # Extract outputs using the new robust extractor
     qa_report = None
     accessibility_report = None
+    revised_code = None
+    performance_report = None
     
     for i, task_instance in enumerate(ui_generator_crew.tasks):
         task_output_item = task_instance.output
@@ -212,6 +216,16 @@ def generate_ui(args):
         elif isinstance(actual_output, AccessibilityReportOutput):
             accessibility_report = actual_output
             log(f"✅ Accessibility Report received - WCAG Level: {accessibility_report.wcag_level}")
+        elif isinstance(actual_output, RevisedCodeOutput):
+            revised_code = actual_output
+            log(f"✅ Revised Code received - Fixes applied: {len(revised_code.fixes_applied)}")
+            # Replace original code with revised code
+            ui_code_dict['index.html'] = revised_code.html_code
+            ui_code_dict['styles.css'] = revised_code.css_code
+            ui_code_dict['app.js'] = revised_code.js_code
+        elif isinstance(actual_output, PerformanceReportOutput):
+            performance_report = actual_output
+            log(f"✅ Performance Report received - Score: {performance_report.lighthouse_score_estimate}/100")
         elif isinstance(actual_output, AgentConfigOutput):
             log(f"Task output is AgentConfigOutput")
             log(f"  Agent Type: {actual_output.agent_type}")
@@ -233,7 +247,7 @@ def generate_ui(args):
             else:
                 log(f"⚠️  Failed to extract code from task {i+1}")
     
-    return True, ui_code_dict, logs, qa_report, accessibility_report
+    return True, ui_code_dict, logs, qa_report, accessibility_report, revised_code, performance_report
 
 def save_files(ui_code_dict, output_dir):
     """Save the generated UI files to the specified directory."""
@@ -296,7 +310,7 @@ def main():
     print(f"  • Output Directory: {output_path}\n")
     
     print("🚀 Starting UI/UX generation process...")
-    success, ui_code_dict, logs, qa_report, accessibility_report = generate_ui(args)
+    success, ui_code_dict, logs, qa_report, accessibility_report, revised_code, performance_report = generate_ui(args)
     
     if not success:
         print("\n❌ UI/UX generation failed. See logs for details.")
@@ -402,6 +416,58 @@ def main():
             if len(accessibility_report.recommendations) > 3:
                 print(f"  ... and {len(accessibility_report.recommendations) - 3} more")
     
+    # PHASE 2: Display Code Revision Report
+    if revised_code:
+        print("\n" + "=" * 60)
+        print("🔧 CODE REVISION REPORT")
+        print("=" * 60)
+        
+        if revised_code.issues_remaining:
+            print(f"⚠️  Status: {len(revised_code.issues_remaining)} issues could not be auto-fixed")
+        else:
+            print("✅ Status: All issues successfully fixed!")
+        
+        print(f"\n📝 Fixes Applied ({len(revised_code.fixes_applied)}):")
+        for fix in revised_code.fixes_applied[:10]:  # Show first 10
+            print(f"  ✓ {fix}")
+        if len(revised_code.fixes_applied) > 10:
+            print(f"  ... and {len(revised_code.fixes_applied) - 10} more fixes")
+        
+        if revised_code.issues_remaining:
+            print(f"\n⚠️  Issues Remaining ({len(revised_code.issues_remaining)}):")
+            for issue in revised_code.issues_remaining[:5]:
+                print(f"  • {issue}")
+            if len(revised_code.issues_remaining) > 5:
+                print(f"  ... and {len(revised_code.issues_remaining) - 5} more")
+    
+    # PHASE 2: Display Performance Report
+    if performance_report:
+        print("\n" + "=" * 60)
+        print("⚡ PERFORMANCE OPTIMIZATION REPORT")
+        print("=" * 60)
+        
+        if performance_report.optimized:
+            print("✅ Status: Code successfully optimized for production")
+        else:
+            print("⚠️  Status: Some optimizations could not be applied")
+        
+        print(f"\n📊 Performance Metrics:")
+        print(f"  • Lighthouse Score (Estimate): {performance_report.lighthouse_score_estimate}/100")
+        print(f"  • Bundle Size Reduction: {performance_report.bundle_size_reduction}")
+        
+        print(f"\n🚀 Optimizations Applied ({len(performance_report.optimizations_applied)}):")
+        for opt in performance_report.optimizations_applied[:10]:  # Show first 10
+            print(f"  ⚡ {opt}")
+        if len(performance_report.optimizations_applied) > 10:
+            print(f"  ... and {len(performance_report.optimizations_applied) - 10} more optimizations")
+        
+        if performance_report.recommendations:
+            print(f"\n💡 Additional Recommendations:")
+            for rec in performance_report.recommendations[:3]:  # Show first 3
+                print(f"  • {rec}")
+            if len(performance_report.recommendations) > 3:
+                print(f"  ... and {len(performance_report.recommendations) - 3} more")
+    
     saved_files = save_files(ui_code_dict, output_path)
     
     print("\n" + "=" * 60)
@@ -411,7 +477,7 @@ def main():
         print(f"  • {file_path}")
     
     # Save reports as JSON
-    if qa_report or accessibility_report:
+    if qa_report or accessibility_report or revised_code or performance_report:
         reports_path = output_path / "reports"
         reports_path.mkdir(exist_ok=True)
         
@@ -426,8 +492,26 @@ def main():
             with open(a11y_file, 'w') as f:
                 json.dump(accessibility_report.dict(), f, indent=2)
             print(f"  • {a11y_file} (Accessibility Report)")
+        
+        if revised_code:
+            revision_file = reports_path / "code_revision.json"
+            with open(revision_file, 'w') as f:
+                json.dump({
+                    "fixes_applied": revised_code.fixes_applied,
+                    "issues_remaining": revised_code.issues_remaining
+                }, f, indent=2)
+            print(f"  • {revision_file} (Code Revision Report)")
+        
+        if performance_report:
+            perf_file = reports_path / "performance_report.json"
+            with open(perf_file, 'w') as f:
+                json.dump(performance_report.dict(), f, indent=2)
+            print(f"  • {perf_file} (Performance Report)")
     
-    print("\n🎉 Done! Your UI has been tested for quality and accessibility.")
+    if revised_code and performance_report:
+        print("\n🎉 Done! Your UI has been tested, fixed, optimized, and is production-ready!")
+    else:
+        print("\n🎉 Done! Your UI has been tested for quality and accessibility.")
     
     return 0
 
