@@ -647,6 +647,76 @@ component_library_search = SerperDevTool(
 
 ---
 
+### **Phase 2.5: Web3 & Smart Contract Integration** (Week 3-4)
+**Priority:** HIGH (for blockchain/Web3 projects)  
+**Effort:** 1-2 weeks
+
+**Tasks:**
+- [ ] Add Web3 Integration Specialist agent
+- [ ] Add Smart Contract Parser agent
+- [ ] Create Web3IntegrationOutput model
+- [ ] Create ContractInterfaceOutput model
+- [ ] Add wallet connection flows (MetaMask, WalletConnect, Coinbase Wallet)
+- [ ] Add contract interaction code generation
+- [ ] Add ABI parsing and type-safe function generation
+- [ ] Add network configuration (Mainnet, Sepolia, Polygon, etc.)
+- [ ] Add transaction handling (gas estimation, error handling, confirmations)
+- [ ] Add event listening and blockchain state management
+- [ ] Test with ERC-20, ERC-721, and custom contracts
+- [ ] Document Web3 integration patterns
+
+**Expected Outcome:**
+- ✅ Automatic wallet connection UI
+- ✅ Type-safe smart contract interactions
+- ✅ Multi-chain support (Ethereum, Polygon, Arbitrum, etc.)
+- ✅ Transaction management with proper error handling
+- ✅ Event listeners and real-time updates
+- ✅ Role-based UI (detect user roles from contract)
+- ✅ Gas estimation and optimization
+- ✅ Support for common patterns (ERC-20, ERC-721, Governance, DeFi)
+
+**New Pydantic Models:**
+```python
+class Web3IntegrationOutput(BaseModel):
+    wallet_connection_code: str
+    contract_interaction_code: str
+    web3_provider_config: Dict[str, Any]
+    required_libraries: List[str] = ["ethers@6.0", "web3modal@3.0"]
+    network_configs: Dict[str, str]
+    abi_interface: str
+    event_listeners: List[str]
+    
+class ContractInterfaceOutput(BaseModel):
+    contract_address: str
+    contract_abi: str
+    read_functions: List[str]
+    write_functions: List[str]
+    events: List[str]
+    role_checks: Optional[Dict[str, str]]
+```
+
+**Use Cases:**
+- DeFi dashboards (Uniswap, Aave, Compound)
+- NFT marketplaces and minting platforms
+- DAO governance interfaces
+- Token management (ERC-20/721/1155)
+- DApp frontends for any Solidity contract
+- Multi-signature wallets
+- Staking/farming interfaces
+
+**Example Command:**
+```bash
+python3 ui_generator_cli.py \
+  --agent-description "StreamStrategyAuction DAO governance" \
+  --agent-capabilities "claim funds, vote proposals, withdraw balance" \
+  --agent-api "Ethereum, StreamStrategyAuction contract, ethers.js" \
+  --contract-address "0x..." \
+  --contract-abi "./StreamStrategyAuction.json" \
+  --output-name "dao-governance"
+```
+
+---
+
 ### **Phase 3: Architecture & Frameworks** (Week 5-6)
 **Priority:** MEDIUM  
 **Effort:** 2 weeks
