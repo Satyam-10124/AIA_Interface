@@ -2,12 +2,18 @@
 
 **Date**: October 22, 2025  
 **Status**: ✅ **FIXED**
+
 ---
+
 ## 🔍 **The Problem**
 
+When running `./test_phase2_5.sh`, the test immediately failed with:
 
 ```
+ValueError: Missing required template variable 'Template variable 'from' not found in inputs dictionary' in description
+```
 
+**Root Cause**: CrewAI's template interpolation system was treating JavaScript template literal syntax in task descriptions as template variables.
 
 ---
 
@@ -15,6 +21,7 @@
 
 ### **Location**: `ui_generator_crew.py`, line 756
 
+**Original Code** (BROKEN):
 ```python
 "     ```javascript\n"
 "     contract.on('Transfer', (from, to, value) => {\n"
