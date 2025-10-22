@@ -74,6 +74,63 @@ class PerformanceReportOutput(BaseModel):
     lighthouse_score_estimate: int = Field(default=0, description="Estimated Lighthouse performance score (0-100)")
     recommendations: List[str] = Field(default_factory=list, description="Additional performance recommendations")
 
+# PHASE 2.5 ENHANCEMENT: Web3 & Smart Contract Integration Models
+class ContractInterfaceOutput(BaseModel):
+    """Parsed smart contract interface details from ABI."""
+    contract_name: str = Field(..., description="Name of the smart contract")
+    contract_address: str = Field(..., description="Deployed contract address")
+    network: str = Field(..., description="Network name (mainnet, sepolia, polygon, etc.)")
+    read_functions: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of view/pure functions with params and return types"
+    )
+    write_functions: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of state-changing functions with params"
+    )
+    events: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of contract events with parameters"
+    )
+    roles: List[str] = Field(
+        default_factory=list,
+        description="Access control roles (if using OpenZeppelin AccessControl)"
+    )
+    constructor_params: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Constructor parameters if needed"
+    )
+
+class Web3IntegrationOutput(BaseModel):
+    """Generated Web3 integration code and configuration."""
+    wallet_connection_code: str = Field(..., description="Complete wallet connection logic (MetaMask, WalletConnect)")
+    contract_wrapper_code: str = Field(..., description="Type-safe contract wrapper class")
+    network_config: Dict[str, Any] = Field(..., description="Network configuration (RPC URLs, chain IDs, explorers)")
+    required_libraries: List[str] = Field(
+        default_factory=lambda: ["ethers@6.0.0", "web3modal@3.0.0"],
+        description="Required npm packages or CDN scripts"
+    )
+    event_listeners: List[str] = Field(
+        default_factory=list,
+        description="Generated event listener code for contract events"
+    )
+    transaction_handlers: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Transaction handling code for each write function"
+    )
+    read_function_calls: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Generated code for calling read/view functions"
+    )
+    role_checks: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Code for checking user roles (if AccessControl is used)"
+    )
+    gas_estimation_code: str = Field(
+        default="",
+        description="Gas estimation logic for transactions"
+    )
+
 # Load environment variables
 load_dotenv()
 
@@ -203,6 +260,50 @@ performance_optimizer = Agent(
     verbose=True,
     allow_delegation=False,
     tools=[code_interpreter],
+    llm=llm
+)
+
+# PHASE 2.5 ENHANCEMENT: Web3 & Smart Contract Agents
+smart_contract_parser = Agent(
+    role='Smart Contract ABI Parser & Analyzer',
+    goal='Parse smart contract ABIs and extract function signatures, events, and access control patterns',
+    backstory=(
+        "An expert in Ethereum smart contracts and Solidity with deep knowledge of ERC standards, "
+        "OpenZeppelin libraries, and DeFi protocols. Specializes in analyzing contract ABIs to identify: "
+        "- Read functions (view/pure) vs Write functions (state-changing) "
+        "- Function parameters and return types "
+        "- Events and their indexed parameters "
+        "- Access control roles (OpenZeppelin AccessControl pattern) "
+        "- Common patterns: ERC-20, ERC-721, ERC-1155, Governor, Timelock "
+        "Uses Python's JSON parsing and pattern matching to extract type-safe contract interfaces. "
+        "Identifies constructor parameters, fallback functions, and special functions like receive(). "
+        "IMPORTANT: You must return ContractInterfaceOutput with complete function signatures."
+    ),
+    verbose=True,
+    allow_delegation=False,
+    tools=[code_interpreter],  # Uses code interpreter for ABI parsing
+    llm=llm
+)
+
+web3_integrator = Agent(
+    role='Web3 Integration Specialist',
+    goal='Generate production-ready Web3 code for wallet connections, contract interactions, and blockchain event handling',
+    backstory=(
+        "A senior blockchain frontend developer with expertise in ethers.js v6, web3.js, wagmi, and Web3Modal. "
+        "Specializes in creating type-safe, error-resistant dApp frontends with: "
+        "- Multi-wallet support (MetaMask, WalletConnect, Coinbase Wallet, Rainbow) "
+        "- Multi-chain configurations (Ethereum, Polygon, Arbitrum, Optimism, BSC) "
+        "- Transaction management (gas estimation, error handling, confirmation tracking) "
+        "- Real-time event listeners for contract events "
+        "- Role-based UI (show/hide features based on user's on-chain permissions) "
+        "- Proper error messages for user-rejected transactions, insufficient funds, network mismatches "
+        "Generates clean, maintainable JavaScript classes that wrap contract interactions. "
+        "Follows best practices: checks for window.ethereum, handles network switching, validates addresses. "
+        "IMPORTANT: You must return Web3IntegrationOutput with complete working code."
+    ),
+    verbose=True,
+    allow_delegation=False,
+    tools=[code_interpreter, serper_tool],  # Code gen + research for best practices
     llm=llm
 )
 
@@ -536,6 +637,169 @@ task_optimize_performance = Task(
     output_pydantic=PerformanceReportOutput
 )
 
+# PHASE 2.5 ENHANCEMENT: Web3 & Smart Contract Tasks
+task_parse_contract = Task(
+    description=(
+        "Parse the provided smart contract ABI and extract all interface details.\n"
+        "\n"
+        "CONTRACT INFORMATION PROVIDED:\n"
+        "- Contract Address: '{contract_address}'\n"
+        "- Contract ABI: '{contract_abi}'\n"
+        "- Network: '{network}'\n"
+        "\n"
+        "PARSING CHECKLIST:\n"
+        "\n"
+        "1. LOAD AND VALIDATE ABI:\n"
+        "   - Parse the JSON ABI file or string\n"
+        "   - Validate it's a proper Solidity ABI structure\n"
+        "   - Extract contract name (if available in metadata)\n"
+        "\n"
+        "2. CATEGORIZE FUNCTIONS:\n"
+        "   - Identify READ functions (view, pure)\n"
+        "   - Identify WRITE functions (state-changing, payable)\n"
+        "   - For each function, extract:\n"
+        "     * Function name\n"
+        "     * Input parameters (name, type, indexed for events)\n"
+        "     * Output/return types\n"
+        "     * State mutability (view, pure, payable, nonpayable)\n"
+        "\n"
+        "3. EXTRACT EVENTS:\n"
+        "   - List all event definitions\n"
+        "   - For each event, extract:\n"
+        "     * Event name\n"
+        "     * Parameters (name, type, indexed status)\n"
+        "\n"
+        "4. DETECT ACCESS CONTROL:\n"
+        "   - Look for OpenZeppelin AccessControl patterns:\n"
+        "     * hasRole(bytes32,address) function\n"
+        "     * getRoleAdmin(bytes32) function\n"
+        "     * Role-based modifiers\n"
+        "   - Extract role constants (e.g., DEFAULT_ADMIN_ROLE, MINTER_ROLE)\n"
+        "   - Identify which functions require which roles\n"
+        "\n"
+        "5. IDENTIFY ERC STANDARDS:\n"
+        "   - Check if implements ERC-20 (transfer, balanceOf, approve, etc.)\n"
+        "   - Check if implements ERC-721 (mint, ownerOf, tokenURI, etc.)\n"
+        "   - Check if implements ERC-1155 (batch operations)\n"
+        "   - Check if implements Governor pattern (propose, castVote, execute)\n"
+        "\n"
+        "IMPORTANT: Return ContractInterfaceOutput with complete, type-safe function signatures.\n"
+        "This output will be used to generate Web3 integration code.\n"
+    ),
+    expected_output="A ContractInterfaceOutput Pydantic model with parsed contract interface",
+    agent=smart_contract_parser,
+    context=[],  # Standalone task, doesn't depend on others
+    output_pydantic=ContractInterfaceOutput
+)
+
+task_generate_web3_integration = Task(
+    description=(
+        "Generate production-ready Web3 integration code based on the parsed contract interface.\n"
+        "\n"
+        "CONTRACT INTERFACE:\n"
+        "- Use the parsed contract interface from the previous task\n"
+        "- Contract Address: '{contract_address}'\n"
+        "- Network: '{network}'\n"
+        "\n"
+        "CODE GENERATION CHECKLIST:\n"
+        "\n"
+        "1. WALLET CONNECTION CODE:\n"
+        "   - Generate complete wallet connection logic:\n"
+        "     * Check for window.ethereum\n"
+        "     * Handle MetaMask, WalletConnect, Coinbase Wallet\n"
+        "     * Request account access (eth_requestAccounts)\n"
+        "     * Get signer and provider\n"
+        "     * Display connected address in UI\n"
+        "   - Handle wallet events:\n"
+        "     * accountsChanged → reload or update UI\n"
+        "     * chainChanged → reload or prompt network switch\n"
+        "     * disconnect → clear state\n"
+        "\n"
+        "2. NETWORK CONFIGURATION:\n"
+        "   - Generate network config object with:\n"
+        "     * Chain ID (hex and decimal)\n"
+        "     * RPC URL (Infura, Alchemy, or public)\n"
+        "     * Block explorer URL\n"
+        "     * Currency symbol (ETH, MATIC, etc.)\n"
+        "   - Add network switching logic\n"
+        "   - Handle wrong network errors\n"
+        "\n"
+        "3. CONTRACT WRAPPER CLASS:\n"
+        "   - Generate a JavaScript class that wraps the contract:\n"
+        "     ```javascript\n"
+        "     class ContractWrapper {\n"
+        "       constructor(address, abi, provider) { ... }\n"
+        "       // Read functions\n"
+        "       async functionName(params) { ... }\n"
+        "       // Write functions with gas estimation\n"
+        "       async writeFunctionName(params) { ... }\n"
+        "     }\n"
+        "     ```\n"
+        "   - For each READ function, generate:\n"
+        "     * Async function that calls contract\n"
+        "     * Error handling\n"
+        "     * Return type formatting (e.g., format BigNumber to string)\n"
+        "   - For each WRITE function, generate:\n"
+        "     * Gas estimation\n"
+        "     * Transaction building\n"
+        "     * Confirmation waiting\n"
+        "     * Error handling (user rejected, insufficient funds, etc.)\n"
+        "\n"
+        "4. EVENT LISTENERS:\n"
+        "   - For each contract event, generate:\n"
+        "     * Event listener setup code\n"
+        "     * Callback function template\n"
+        "     * UI update logic\n"
+        "   - Example:\n"
+        "     ```javascript\n"
+        "     contract.on('Transfer', (from, to, value) => {\n"
+        "       console.log(`Transfer: ${from} → ${to}: ${value}`);\n"
+        "       updateBalanceDisplay();\n"
+        "     });\n"
+        "     ```\n"
+        "\n"
+        "5. TRANSACTION HANDLERS:\n"
+        "   - Generate complete transaction flow for each write function:\n"
+        "     * Validate inputs\n"
+        "     * Show 'Confirming...' status\n"
+        "     * Estimate gas\n"
+        "     * Send transaction\n"
+        "     * Show 'Waiting for confirmation...' status\n"
+        "     * Wait for receipt\n"
+        "     * Show success with transaction hash\n"
+        "     * Update UI\n"
+        "   - Handle all error cases:\n"
+        "     * User rejected transaction\n"
+        "     * Insufficient funds\n"
+        "     * Gas estimation failed\n"
+        "     * Transaction reverted\n"
+        "\n"
+        "6. ROLE-BASED UI (if AccessControl detected):\n"
+        "   - Generate role checking functions:\n"
+        "     ```javascript\n"
+        "     async function checkUserRole(address) {\n"
+        "       const isAdmin = await contract.hasRole(ADMIN_ROLE, address);\n"
+        "       return { isAdmin, ... };\n"
+        "     }\n"
+        "     ```\n"
+        "   - Generate UI visibility logic:\n"
+        "     * Show admin panel only if user has admin role\n"
+        "     * Disable buttons if user lacks permission\n"
+        "\n"
+        "7. REQUIRED LIBRARIES:\n"
+        "   - Specify ethers.js v6 CDN or npm package\n"
+        "   - Specify web3modal v3 if using multi-wallet\n"
+        "\n"
+        "IMPORTANT: Generate complete, copy-paste ready code.\n"
+        "The generated code should work immediately with the contract address and ABI.\n"
+        "Return Web3IntegrationOutput with all code and configurations.\n"
+    ),
+    expected_output="A Web3IntegrationOutput Pydantic model with complete Web3 integration code",
+    agent=web3_integrator,
+    context=[task_parse_contract],  # Depends on parsed contract interface
+    output_pydantic=Web3IntegrationOutput
+)
+
 # CREW DEFINITION (PHASE 2: Enhanced with Code Revision & Performance)
 ui_generator_crew = Crew(
     agents=[
@@ -557,6 +821,36 @@ ui_generator_crew = Crew(
         task_accessibility_audit,  # PHASE 1: Accessibility Check
         task_revise_code,          # PHASE 2: Auto-fix all issues
         task_optimize_performance  # PHASE 2: Production optimization
+    ],
+    process=Process.sequential,
+    verbose=True,
+)
+
+# CREW DEFINITION (PHASE 2.5: Web3-Enhanced with Smart Contract Integration)
+web3_ui_generator_crew = Crew(
+    agents=[
+        agent_analyzer,
+        ui_designer,
+        frontend_developer,
+        smart_contract_parser,     # PHASE 2.5: Parse contract ABI
+        web3_integrator,           # PHASE 2.5: Generate Web3 code
+        qa_tester,                 # PHASE 1: QA Testing
+        accessibility_auditor,     # PHASE 1: Accessibility Auditing
+        code_reviser,              # PHASE 2: Code Revision
+        performance_optimizer      # PHASE 2: Performance Optimization
+    ],
+    tasks=[
+        task_analyze_agent,
+        task_design_ui_components,
+        task_parse_contract,         # PHASE 2.5: Parse contract first
+        task_generate_web3_integration,  # PHASE 2.5: Generate Web3 code
+        task_generate_html,
+        task_generate_css,
+        task_generate_javascript,
+        task_qa_test,
+        task_accessibility_audit,
+        task_revise_code,
+        task_optimize_performance
     ],
     process=Process.sequential,
     verbose=True,

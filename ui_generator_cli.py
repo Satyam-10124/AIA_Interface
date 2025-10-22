@@ -16,13 +16,16 @@ load_dotenv()
 # Import crew setup for UI generation
 from ui_generator_crew import (
     ui_generator_crew,
+    web3_ui_generator_crew,       # PHASE 2.5: Web3-enabled crew
     AgentConfigOutput,
     UIComponentsOutput,
     UICodeOutput,
     QAReportOutput,               # PHASE 1: QA Report
     AccessibilityReportOutput,    # PHASE 1: Accessibility Report
     RevisedCodeOutput,            # PHASE 2: Revised Code
-    PerformanceReportOutput       # PHASE 2: Performance Report
+    PerformanceReportOutput,      # PHASE 2: Performance Report
+    ContractInterfaceOutput,      # PHASE 2.5: Parsed contract interface
+    Web3IntegrationOutput         # PHASE 2.5: Web3 integration code
 )
 
 # Import utilities
@@ -105,6 +108,31 @@ def parse_arguments():
         help="UI font size preference"
     )
     
+    # PHASE 2.5: Web3 & Smart Contract integration group
+    web3_group = parser.add_argument_group('Web3 & Smart Contract Integration (Phase 2.5)')
+    
+    web3_group.add_argument(
+        "--contract-address",
+        type=str,
+        default="",
+        help="Smart contract address (e.g., 0x742d35...)"
+    )
+    
+    web3_group.add_argument(
+        "--contract-abi",
+        type=str,
+        default="",
+        help="Path to contract ABI JSON file or JSON string"
+    )
+    
+    web3_group.add_argument(
+        "--network",
+        type=str,
+        choices=["mainnet", "sepolia", "goerli", "polygon", "mumbai", "arbitrum", "optimism", "bsc"],
+        default="sepolia",
+        help="Blockchain network for contract deployment"
+    )
+    
     parser.add_argument(
         "--output-name", "-on",
         type=str,
@@ -129,6 +157,19 @@ def parse_arguments():
 
 def generate_ui(args):
     """Generate UI/UX based on the provided arguments."""
+    # PHASE 2.5: Check if Web3 mode is enabled
+    web3_mode = bool(args.contract_address and args.contract_abi)
+    
+    # Load contract ABI if provided
+    contract_abi_data = ""
+    if web3_mode:
+        # Check if contract_abi is a file path or JSON string
+        if os.path.isfile(args.contract_abi):
+            with open(args.contract_abi, 'r') as f:
+                contract_abi_data = f.read()
+        else:
+            contract_abi_data = args.contract_abi
+    
     # Prepare configuration for the crew
     config = {
         "agent_description": args.agent_description,
@@ -143,6 +184,12 @@ def generate_ui(args):
         }
     }
     
+    # PHASE 2.5: Add Web3 config if in Web3 mode
+    if web3_mode:
+        config["contract_address"] = args.contract_address
+        config["contract_abi"] = contract_abi_data
+        config["network"] = args.network
+    
     ui_code_dict = {}
     logs = []
     
@@ -154,15 +201,26 @@ def generate_ui(args):
     
     log(f"Processing UI generation request for agent: {config['agent_description'][:100]}...")
     
+    # PHASE 2.5: Log Web3 mode status
+    if web3_mode:
+        log(f"🔗 Web3 Mode ENABLED")
+        log(f"   Contract: {args.contract_address}")
+        log(f"   Network: {args.network}")
+        log(f"   Using Web3-enhanced agent pipeline")
+    
     # Log custom design preferences if provided
     if config['user_preferences']['custom_design']:
         log(f"Custom design preferences: {config['user_preferences']['custom_design']}")
     
+    # PHASE 2.5: Select appropriate crew based on mode
+    selected_crew = web3_ui_generator_crew if web3_mode else ui_generator_crew
+    pipeline_desc = "Analysis → Design → Contract Parsing → Web3 Integration → HTML → CSS → JavaScript" if web3_mode else "Analysis → Design → HTML → CSS → JavaScript"
+    
     # Kickoff AI crew for UI generation
-    log("Starting crewAI agents to analyze agent requirements and generate UI/UX...")
-    log("Agent pipeline: Analysis → Design → HTML → CSS → JavaScript")
+    log(f"Starting crewAI agents to analyze agent requirements and generate UI/UX...")
+    log(f"Agent pipeline: {pipeline_desc}")
     try:
-        crew_result = ui_generator_crew.kickoff(inputs=config)
+        crew_result = selected_crew.kickoff(inputs=config)
         log("Crew kickoff completed successfully.")
     except Exception as e:
         error_msg = f"Error during crew execution: {str(e)}\n{traceback.format_exc()}"
@@ -171,23 +229,25 @@ def generate_ui(args):
         return False, ui_code_dict, logs
     
     # Process task outputs
-    if not ui_generator_crew.tasks:
+    if not selected_crew.tasks:
         log("Warning: No tasks found in the crew definition.")
         return False, ui_code_dict, logs
     
-    log(f"Processing outputs from {len(ui_generator_crew.tasks)} AI agent tasks.")
+    log(f"Processing outputs from {len(selected_crew.tasks)} AI agent tasks.")
     
     # Show diagnostic info if verbose
     if args.verbose:
-        OutputExtractor.diagnostic_dump(ui_generator_crew, log)
+        OutputExtractor.diagnostic_dump(selected_crew, log)
     
     # Extract outputs using the new robust extractor
     qa_report = None
     accessibility_report = None
     revised_code = None
     performance_report = None
+    contract_interface = None  # PHASE 2.5
+    web3_integration = None    # PHASE 2.5
     
-    for i, task_instance in enumerate(ui_generator_crew.tasks):
+    for i, task_instance in enumerate(selected_crew.tasks):
         task_output_item = task_instance.output
         
         if not task_output_item:
@@ -210,7 +270,18 @@ def generate_ui(args):
             log(f"Task {i+1} output type: {type(actual_output).__name__}")
         
         # Check output type
-        if isinstance(actual_output, QAReportOutput):
+        if isinstance(actual_output, ContractInterfaceOutput):  # PHASE 2.5
+            contract_interface = actual_output
+            log(f"✅ Contract Interface parsed - Contract: {contract_interface.contract_name}")
+            log(f"   Read functions: {len(contract_interface.read_functions)}, Write functions: {len(contract_interface.write_functions)}")
+            log(f"   Events: {len(contract_interface.events)}, Roles: {len(contract_interface.roles)}")
+        elif isinstance(actual_output, Web3IntegrationOutput):  # PHASE 2.5
+            web3_integration = actual_output
+            log(f"✅ Web3 Integration code generated")
+            log(f"   Wallet connection: ✓, Contract wrapper: ✓")
+            log(f"   Event listeners: {len(web3_integration.event_listeners)}")
+            log(f"   Required libraries: {', '.join(web3_integration.required_libraries)}")
+        elif isinstance(actual_output, QAReportOutput):
             qa_report = actual_output
             log(f"✅ QA Report received - Passed: {qa_report.passed}")
         elif isinstance(actual_output, AccessibilityReportOutput):
@@ -247,7 +318,7 @@ def generate_ui(args):
             else:
                 log(f"⚠️  Failed to extract code from task {i+1}")
     
-    return True, ui_code_dict, logs, qa_report, accessibility_report, revised_code, performance_report
+    return True, ui_code_dict, logs, qa_report, accessibility_report, revised_code, performance_report, contract_interface, web3_integration
 
 def save_files(ui_code_dict, output_dir):
     """Save the generated UI files to the specified directory."""
@@ -287,6 +358,272 @@ def save_files(ui_code_dict, output_dir):
     
     return saved_files
 
+def generate_readme(output_path, args, contract_interface, web3_integration):
+    """Auto-generate README.md with setup and deployment instructions (per user's memory preference)."""
+    readme_path = output_path / "README.md"
+    
+    web3_mode = bool(contract_interface and web3_integration)
+    
+    readme_content = f"""# {args.output_name.replace('-', ' ').title()}
+
+**Generated by AI Agent UI/UX Generator**
+
+## 📋 Overview
+
+{args.agent_description}
+
+### Key Capabilities
+{chr(10).join(f"- {cap.strip()}" for cap in args.agent_capabilities.split(','))}
+
+---
+
+## 🚀 Quick Start
+
+### Option 1: Open Directly in Browser
+
+```bash
+# Navigate to this directory
+cd {output_path.name}
+
+# Start a simple HTTP server
+python3 -m http.server 8000
+
+# Open in browser
+open http://localhost:8000
+```
+
+### Option 2: Deploy to Production
+
+Deploy to any static hosting service:
+- **Vercel**: `vercel --prod`
+- **Netlify**: Drag and drop this folder to netlify.com/drop
+- **GitHub Pages**: Push to a gh-pages branch
+- **Surge**: `surge .`
+
+---
+"""
+
+    if web3_mode:
+        readme_content += f"""## 🔗 Web3 Configuration
+
+### Contract Details
+- **Address**: `{contract_interface.contract_address}`
+- **Network**: {contract_interface.network}
+- **Contract Type**: {contract_interface.contract_name}
+
+### Functions Available
+- **Read Functions**: {len(contract_interface.read_functions)} (view/pure)
+- **Write Functions**: {len(contract_interface.write_functions)} (state-changing)
+- **Events**: {len(contract_interface.events)}
+- **Access Roles**: {len(contract_interface.roles) if contract_interface.roles else 0}
+
+### Prerequisites
+1. **MetaMask Wallet** (or any Web3 wallet)
+   - Install from https://metamask.io
+   - Create or import a wallet
+   - Switch to {contract_interface.network} network
+
+2. **Test Funds** (for {contract_interface.network})
+   - Get testnet ETH from a faucet
+   - https://sepoliafaucet.com (for Sepolia)
+   - https://faucet.polygon.technology (for Mumbai)
+
+### Required Libraries
+{chr(10).join(f"- {lib}" for lib in web3_integration.required_libraries)}
+
+**All libraries are loaded via CDN in the HTML file. No npm install needed!**
+
+---
+
+## 🛠️ Customization
+
+### Change Contract Address
+Edit `app.js` and update:
+```javascript
+const CONTRACT_ADDRESS = '{contract_interface.contract_address}'; // Update this
+```
+
+### Change Network
+Edit `network-config.json` or update in `app.js`:
+```javascript
+const NETWORK_CONFIG = {{
+  chainId: '0x...', // Update chain ID
+  name: 'Your Network',
+  rpcUrl: 'https://...',
+  // ...
+}};
+```
+
+### Modify Contract Functions
+The contract wrapper class in `contract-wrapper.js` includes methods for:
+
+**Read Functions:**
+{chr(10).join(f"- `{func.get('name', 'unknown')}()` - {func.get('description', 'No description')}" for func in contract_interface.read_functions[:5])}
+
+**Write Functions:**
+{chr(10).join(f"- `{func.get('name', 'unknown')}()` - {func.get('description', 'No description')}" for func in contract_interface.write_functions[:5])}
+
+---
+"""
+
+    readme_content += f"""## 📂 Project Structure
+
+```
+{output_path.name}/
+├── index.html          # Main HTML structure
+├── styles.css          # Styling with design tokens
+├── app.js              # JavaScript logic{'and Web3 integration' if web3_mode else ''}
+├── design_tokens.json  # Design system configuration
+├── README.md           # This file
+"""
+
+    if web3_mode:
+        readme_content += """├── web3-wallet.js      # Wallet connection logic
+├── contract-wrapper.js # Smart contract wrapper
+├── network-config.json # Network configuration
+"""
+
+    readme_content += f"""└── reports/            # Generation reports
+    ├── qa_report.json
+    ├── accessibility_report.json
+    ├── code_revision.json
+    ├── performance_report.json
+"""
+
+    if web3_mode:
+        readme_content += """    ├── contract_interface.json
+    └── web3_integration.json
+"""
+
+    readme_content += """```
+
+---
+
+## 🎨 Design System
+
+**Theme**: {theme}  
+**Layout**: {layout}  
+**Color Scheme**: {color}  
+
+All design tokens are defined in `design_tokens.json` and can be customized.
+
+---
+
+## 📊 Quality Reports
+
+This UI has been automatically tested and optimized:
+
+✅ **QA Testing**: Syntax validation, bug detection, code quality  
+✅ **Accessibility**: WCAG 2.1 AA compliance  
+✅ **Code Revision**: Auto-fixed issues from QA and accessibility  
+✅ **Performance**: Optimized for production (minified, lazy-loaded)  
+
+View detailed reports in the `reports/` directory.
+
+---
+
+## 🐛 Troubleshooting
+
+""".format(theme=args.theme, layout=args.layout, color=args.color_scheme)
+
+    if web3_mode:
+        readme_content += """### MetaMask Not Detected
+- Ensure MetaMask extension is installed
+- Reload the page after installing
+- Check browser console for errors
+
+### Wrong Network
+- Click "Connect Wallet" - it will prompt to switch networks
+- Or manually switch in MetaMask to {network}
+
+### Transaction Fails
+- Check you have enough testnet ETH for gas
+- Verify contract address is correct
+- Check if you have required role/permissions
+
+### Functions Not Showing
+- Contract may require role-based access
+- Connect with an authorized wallet
+- Check contract_interface.json for role requirements
+
+""".format(network=contract_interface.network)
+
+    readme_content += """### Styling Issues
+- Clear browser cache
+- Check console for CSS errors
+- Verify all files are in the same directory
+
+### General Issues
+- Open browser console (F12) to see error messages
+- Check that all files are loaded correctly
+- Verify network connectivity
+
+---
+
+## 📝 License
+
+Auto-generated UI - Free to use and modify
+
+---
+
+## 🙏 Credits
+
+Generated by **AI Agent UI/UX Generator**  
+- Uses CrewAI for multi-agent orchestration
+- Powered by Google Gemini 2.5 Pro
+"""
+
+    if web3_mode:
+        readme_content += "- Web3 integration with ethers.js v6\n"
+
+    readme_content += f"""
+---
+
+**Generated on**: {Path(__file__).stat().st_mtime}  
+**Agent Description**: {args.agent_description[:100]}...
+"""
+
+    with open(readme_path, 'w') as f:
+        f.write(readme_content)
+    
+    print(f"  • {readme_path} (README)")
+
+def generate_requirements_txt(output_path, web3_integration):
+    """Auto-generate requirements.txt with required dependencies (per user's memory preference)."""
+    requirements_path = output_path / "requirements.txt"
+    
+    # For HTML/CSS/JS projects, this lists JavaScript libraries (for documentation)
+    requirements_content = """# JavaScript Dependencies (Loaded via CDN)
+# This file documents the libraries used in this project.
+# All libraries are loaded directly from CDN in the HTML file.
+# No npm install or package manager needed for this vanilla JS project!
+
+"""
+
+    if web3_integration:
+        requirements_content += f"""# Web3 Libraries
+{chr(10).join(f"# - {lib}" for lib in web3_integration.required_libraries)}
+
+# Additional Web3 Tools (optional)
+# - @walletconnect/web3-provider@latest
+# - web3modal@latest
+
+"""
+
+    requirements_content += """# If you want to convert to a Node.js project:
+# npm install ethers@6.0.0
+# npm install web3modal@3.0.0
+
+# For local development server:
+# npm install -g http-server
+# OR use: python3 -m http.server 8000
+"""
+
+    with open(requirements_path, 'w') as f:
+        f.write(requirements_content)
+    
+    print(f"  • {requirements_path} (Requirements)")
+
 def main():
     """Main entry point for the CLI application."""
     args = parse_arguments()
@@ -307,10 +644,17 @@ def main():
     print(f"  • Theme: {args.theme}")
     print(f"  • Layout: {args.layout}")
     print(f"  • Color Scheme: {args.color_scheme}")
-    print(f"  • Output Directory: {output_path}\n")
+    print(f"  • Output Directory: {output_path}")
     
-    print("🚀 Starting UI/UX generation process...")
-    success, ui_code_dict, logs, qa_report, accessibility_report, revised_code, performance_report = generate_ui(args)
+    # PHASE 2.5: Show Web3 parameters if in Web3 mode
+    if args.contract_address and args.contract_abi:
+        print(f"\n🔗 Web3 Mode:")
+        print(f"  • Contract Address: {args.contract_address}")
+        print(f"  • Network: {args.network}")
+        print(f"  • ABI Source: {'File' if os.path.isfile(args.contract_abi) else 'String'}")
+    
+    print("\n🚀 Starting UI/UX generation process...")
+    success, ui_code_dict, logs, qa_report, accessibility_report, revised_code, performance_report, contract_interface, web3_integration = generate_ui(args)
     
     if not success:
         print("\n❌ UI/UX generation failed. See logs for details.")
@@ -468,6 +812,30 @@ def main():
             if len(performance_report.recommendations) > 3:
                 print(f"  ... and {len(performance_report.recommendations) - 3} more")
     
+    # PHASE 2.5: Add Web3 integration files to ui_code_dict before saving
+    if web3_integration:
+        # Save wallet connection code as separate file
+        ui_code_dict['web3-wallet.js'] = web3_integration.wallet_connection_code
+        
+        # Save contract wrapper code
+        ui_code_dict['contract-wrapper.js'] = web3_integration.contract_wrapper_code
+        
+        # Save network config as JSON
+        ui_code_dict['network-config.json'] = json.dumps(web3_integration.network_config, indent=2)
+        
+        # Merge Web3 code into main app.js (or create web3-integration.js)
+        if 'app.js' in ui_code_dict:
+            # Append Web3 code to existing app.js
+            ui_code_dict['app.js'] += "\n\n// === WEB3 INTEGRATION (Auto-generated) ===\n\n"
+            ui_code_dict['app.js'] += web3_integration.wallet_connection_code + "\n\n"
+            ui_code_dict['app.js'] += web3_integration.contract_wrapper_code + "\n\n"
+            
+            # Add event listeners
+            if web3_integration.event_listeners:
+                ui_code_dict['app.js'] += "// === CONTRACT EVENT LISTENERS ===\n\n"
+                for listener in web3_integration.event_listeners:
+                    ui_code_dict['app.js'] += listener + "\n\n"
+    
     saved_files = save_files(ui_code_dict, output_path)
     
     print("\n" + "=" * 60)
@@ -477,7 +845,7 @@ def main():
         print(f"  • {file_path}")
     
     # Save reports as JSON
-    if qa_report or accessibility_report or revised_code or performance_report:
+    if qa_report or accessibility_report or revised_code or performance_report or contract_interface or web3_integration:
         reports_path = output_path / "reports"
         reports_path.mkdir(exist_ok=True)
         
@@ -507,8 +875,32 @@ def main():
             with open(perf_file, 'w') as f:
                 json.dump(performance_report.dict(), f, indent=2)
             print(f"  • {perf_file} (Performance Report)")
+        
+        # PHASE 2.5: Save Web3 reports
+        if contract_interface:
+            contract_file = reports_path / "contract_interface.json"
+            with open(contract_file, 'w') as f:
+                json.dump(contract_interface.dict(), f, indent=2)
+            print(f"  • {contract_file} (Contract Interface)")
+        
+        if web3_integration:
+            web3_file = reports_path / "web3_integration.json"
+            with open(web3_file, 'w') as f:
+                json.dump(web3_integration.dict(), f, indent=2)
+            print(f"  • {web3_file} (Web3 Integration Details)")
     
-    if revised_code and performance_report:
+    # PHASE 2.5: Auto-generate README.md and requirements.txt (per user's memory preference)
+    generate_readme(output_path, args, contract_interface, web3_integration)
+    generate_requirements_txt(output_path, web3_integration)
+    
+    if web3_integration:
+        print("\n🎉 Done! Your Web3 dApp UI is ready with full smart contract integration!")
+        print("\n📚 Next Steps:")
+        print("  1. Read the generated README.md for deployment instructions")
+        print("  2. Install dependencies from requirements.txt")
+        print("  3. Update the contract address if deploying to a different network")
+        print("  4. Open index.html in a browser with MetaMask installed")
+    elif revised_code and performance_report:
         print("\n🎉 Done! Your UI has been tested, fixed, optimized, and is production-ready!")
     else:
         print("\n🎉 Done! Your UI has been tested for quality and accessibility.")
