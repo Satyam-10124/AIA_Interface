@@ -136,7 +136,7 @@ load_dotenv()
 
 # Initialize LLM
 llm = LLM(
-    model="gemini/gemini-2.5-pro",  # Using gemini-pro, adjust if needed
+    model="gemini/gemini-2.5-flash",  # Using gemini-pro, adjust if needed
     api_key=os.getenv("GEMINI_API_KEY"),
     # You can add other llm configurations here, e.g., temperature
 )
@@ -752,10 +752,10 @@ task_generate_web3_integration = Task(
         "     * UI update logic\n"
         "   - Example:\n"
         "     ```javascript\n"
-        "     contract.on('Transfer', (from, to, value) => {\n"
-        "       console.log(`Transfer: ${from} → ${to}: ${value}`);\n"
+        "     contract.on('Transfer', (from, to, value) => {{\n"
+        "       console.log('Transfer: ' + from + ' → ' + to + ': ' + value);\n"
         "       updateBalanceDisplay();\n"
-        "     });\n"
+        "     }});\n"
         "     ```\n"
         "\n"
         "5. TRANSACTION HANDLERS:\n"

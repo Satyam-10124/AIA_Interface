@@ -226,12 +226,12 @@ def generate_ui(args):
         error_msg = f"Error during crew execution: {str(e)}\n{traceback.format_exc()}"
         log(error_msg)
         logger.error(error_msg)
-        return False, ui_code_dict, logs
+        return False, ui_code_dict, logs, None, None, None, None, None, None
     
     # Process task outputs
     if not selected_crew.tasks:
         log("Warning: No tasks found in the crew definition.")
-        return False, ui_code_dict, logs
+        return False, ui_code_dict, logs, None, None, None, None, None, None
     
     log(f"Processing outputs from {len(selected_crew.tasks)} AI agent tasks.")
     
